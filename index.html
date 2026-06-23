@@ -19,9 +19,9 @@
             <div>
                 <div class="flex items-center space-x-2">
                     <h1 class="text-xl font-bold tracking-tight">Local WebGPU Knowledge Hub</h1>
-                    <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">v1.1.0</span>
+                    <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">v1.2.0</span>
                 </div>
-                <p class="text-xs text-slate-400">100% Souverän • Daten verbleiben im Browser-Cache dieses Laptops</p>
+                <p class="text-xs text-slate-400">100% Souverän • Optimiert für CPU-WASM Stabilität</p>
             </div>
         </div>
         <div id="model-status" class="flex items-center space-x-2 text-sm bg-slate-800 px-3 py-1.5 rounded-md border border-slate-700">
@@ -54,7 +54,7 @@
             </div>
             <div id="chat-log" class="flex-1 p-4 overflow-y-auto space-y-4 text-sm">
                 <div class="bg-slate-800 p-3 rounded-xl max-w-[85%]">
-                    System bereit. Ergänze Dokumente und stelle gezielte Fragen. Die Inferenz erfolgt lokal.
+                    System bereit (v1.2.0). SmolLM2 CPU-optimiertes Modell wird geladen...
                 </div>
             </div>
             <div class="p-4 bg-slate-950 border-t border-slate-800 flex space-x-2">
@@ -84,10 +84,12 @@
         async function initLLM() {
             const statusDot = document.getElementById('status-dot');
             const statusText = document.getElementById('status-text');
-            const modelPath = 'onnx-community/Qwen2.5-0.5B-Instruct';
+            
+            // Wechsel auf SmolLM2 (135M Parameter, extrem stabil und schnell auf CPUs via WASM)
+            const modelPath = 'onnx-community/SmolLM2-135M-Instruct-openvino-int4';
 
             try {
-                statusText.innerText = 'Lade WebGPU Engine...';
+                statusText.innerText = 'Prüfe WebGPU...';
                 generatorPipeline = await pipeline('text-generation', modelPath, {
                     device: 'webgpu',
                     progress_callback: (data) => {
@@ -95,13 +97,13 @@
                     }
                 });
                 statusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
-                statusText.innerText = 'Bereit (WebGPU Mode)';
+                statusText.innerText = 'Bereit (WebGPU)';
                 unlockUI();
             } catch (err) {
-                console.log("WebGPU im Firmenprofil gesperrt, starte CPU-WASM-Fallback...", err);
-                statusText.innerText = 'Lade CPU-WASM-Modell...';
+                console.log("Wechsle auf stabilen CPU-WASM Modus...");
+                statusText.innerText = 'Lade CPU-Modell...';
                 try {
-                    generatorPipeline = await pipeline('text-generation', modelPath, {
+                    generatorPipeline = await pipeline('text-generation', 'onnx-community/SmolLM2-135M-Instruct', {
                         device: 'wasm',
                         progress_callback: (data) => {
                             if (data.status === 'progress') statusText.innerText = `Lade (CPU): ${Math.round(data.progress)}%`;
@@ -183,25 +185,25 @@
             if (!ctx.trim()) ctx = "Kein relevanter Text-Inhalt hinterlegt.";
 
             try {
+                // Modifiziertes Chat-Template spezifisch für SmolLM2-Instruct
                 const messages = [
-                    { role: 'system', content: `Du bist ein präziser IT-Assistent. Beantworte die Fragen auf Deutsch, sachlich und ausschliesslich basierend auf dem bereitgestellten Kontext. Nutze keine externen Fakten.\n\nKontext:\n${ctx}` },
+                    { role: 'system', content: `Du bist ein präziser IT-Assistent. Beantworte die Frage kurz und sachlich auf Deutsch basierend auf dem Kontext.\n\nKontext:\n${ctx}` },
                     { role: 'user', content: val }
                 ];
 
                 const out = await generatorPipeline(messages, {
-                    max_new_tokens: 160,
+                    max_new_tokens: 90,
                     temperature: 0.1,
-                    top_k: 20,
-                    repetition_penalty: 1.15
+                    repetition_penalty: 1.2
                 });
                 
                 const answer = out[0].generated_text[out[0].generated_text.length - 1].content.trim();
                 
                 aDiv.className = "bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-100 text-sm max-w-[85%]";
-                aDiv.innerText = answer || "Keine Antwort aus dem Kontext extrahierbar.";
+                aDiv.innerText = answer || "Keine direkte Antwort im Kontext gefunden.";
             } catch (err) {
                 console.error(err);
-                aDiv.innerText = "Fehler bei der lokalen Generierung.";
+                aDiv.innerText = "Fehler bei der Inferenz auf diesem Gerät.";
             }
             log.scrollTop = log.scrollHeight;
         }

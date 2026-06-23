@@ -1,0 +1,273 @@
+(async function() {
+    // 1. CSS-Styles sicher einbetten
+    const style = document.createElement('style');
+    style.textContent = `
+        #local-hub-root { font-family: ui-sans-serif, system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; background: #f8fafc; color: #1e293b; margin:0; padding:0; box-sizing: border-box; }
+        .hub-header { background: #0f172a; color: #ffffff; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+        .hub-container { flex: 1; display: flex; overflow: hidden; width: 100%; }
+        .hub-sidebar { width: 40%; border-right: 1px solid #e2e8f0; background: #ffffff; padding: 16px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
+        .hub-chat-area { width: 60%; background: #1e293b; color: #f1f5f9; display: flex; flex-direction: column; overflow: hidden; }
+        .hub-card { padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; margin-bottom: 8px; cursor: pointer; }
+        .hub-card.active { border-color: #0d9488; background: #ccfbf1; }
+        .hub-btn { background: #0d9488; color: white; padding: 8px 16px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; width: 100%; }
+        .hub-btn:disabled { background: #475569; cursor: not-allowed; }
+        .hub-input { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; box-sizing: border-box; margin-bottom: 4px; }
+        .hub-chat-log { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .msg-user { background: #334155; padding: 10px; border-radius: 8px; max-w: 85%; align-self: flex-end; color: white; }
+        .msg-ai { background: #0f172a; padding: 10px; border-radius: 8px; max-w: 85%; align-self: flex-start; border: 1px solid #334155; }
+        .hub-footer { padding: 12px; background: #020617; display: flex; gap: 8px; }
+    `;
+    document.head.appendChild(style);
+
+    // App-Daten-Status
+    let links = [];
+    let activeContextIndex = null;
+    let generatorPipeline = null;
+
+    // 2. UI-Struktur rein über DOM-Knoten aufbauen (Trusted Types konform)
+    const root = document.createElement('div');
+    root.id = 'local-hub-root';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'hub-header';
+    const headerTitleDiv = document.createElement('div');
+    const h1 = document.createElement('h1');
+    h1.style.margin = '0';
+    h1.style.fontSize = '18px';
+    h1.textContent = 'Ω Local WebGPU Knowledge Hub';
+    const pSub = document.createElement('p');
+    pSub.style.margin = '4px 0 0 0';
+    pSub.style.fontSize = '11px';
+    pSub.style.color = '#94a3b8';
+    pSub.textContent = '100% Nativ über DOM-Nodes initialisiert • CSP & Trusted Types konform';
+    headerTitleDiv.appendChild(h1);
+    headerTitleDiv.appendChild(pSub);
+
+    const statusBadge = document.createElement('div');
+    statusBadge.style.background = '#1e293b';
+    statusBadge.style.padding = '6px 12px';
+    statusBadge.style.borderRadius = '6px';
+    statusBadge.style.fontSize = '12px';
+    statusBadge.style.border = '1px solid #334155';
+    statusBadge.textContent = 'Status: ';
+    const statusText = document.createElement('span');
+    statusText.id = 'hub-status';
+    statusText.style.color = '#f59e0b';
+    statusText.style.fontWeight = 'bold';
+    statusText.textContent = 'Lade Transformers Engine...';
+    statusBadge.appendChild(statusText);
+    header.appendChild(headerTitleDiv);
+    header.appendChild(statusBadge);
+    root.appendChild(header);
+
+    // Hauptcontainer
+    const mainContainer = document.createElement('div');
+    mainContainer.className = 'hub-container';
+
+    // Sidebar
+    const sidebar = document.createElement('div');
+    sidebar.className = 'hub-sidebar';
+
+    const formBox = document.createElement('div');
+    formBox.style.background = '#f8fafc';
+    formBox.style.padding = '12px';
+    formBox.style.borderRadius = '8px';
+    formBox.style.border = '1px solid #e2e8f0';
+    formBox.style.display = 'flex';
+    formBox.style.flexDirection = 'column';
+    formBox.style.gap = '8px';
+
+    const bLabel = document.createElement('b');
+    bLabel.style.fontSize = '12px';
+    bLabel.style.color = '#475569';
+    bLabel.textContent = '➕ LINK ERFASSEN';
+    
+    const inpTitle = document.createElement('input');
+    inpTitle.type = 'text'; inpTitle.placeholder = 'Titel (z.B. Confluence Architektur)'; inpTitle.className = 'hub-input';
+    const inpUrl = document.createElement('input');
+    inpUrl.type = 'text'; inpUrl.placeholder = 'Link (https://...)'; inpUrl.className = 'hub-input';
+    const txtContent = document.createElement('textarea');
+    txtContent.placeholder = 'Text hier hineinkopieren...'; txtContent.rows = 4; txtContent.className = 'hub-input'; txtContent.style.fontFamily = 'monospace'; txtContent.style.fontSize = '11px';
+    
+    const btnAdd = document.createElement('button');
+    btnAdd.className = 'hub-btn';
+    btnAdd.textContent = 'Lokal speichern';
+    
+    formBox.appendChild(bLabel);
+    formBox.appendChild(inpTitle);
+    formBox.appendChild(inpUrl);
+    formBox.appendChild(txtContent);
+    formBox.appendChild(btnAdd);
+    sidebar.appendChild(formBox);
+
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text'; searchInput.placeholder = 'Durchsuchen...'; searchInput.className = 'hub-input';
+    sidebar.appendChild(searchInput);
+
+    const linksContainer = document.createElement('div');
+    linksContainer.id = 'h-links-container';
+    linksContainer.style.overflowY = 'auto';
+    linksContainer.style.flex = '1';
+    sidebar.appendChild(linksContainer);
+
+    // Chatbereich
+    const chatArea = document.createElement('div');
+    chatArea.className = 'hub-chat-area';
+
+    const ctxBanner = document.createElement('div');
+    ctxBanner.style.padding = '8px 16px';
+    ctxBanner.style.background = '#020617';
+    ctxBanner.style.fontSize = '11px';
+    ctxBanner.style.color = '#94a3b8';
+    ctxBanner.textContent = 'Aktiver Kontext: ';
+    const ctxTitle = document.createElement('span');
+    ctxTitle.style.color = '#2dd4bf';
+    ctxTitle.style.fontWeight = 'bold';
+    ctxTitle.textContent = 'Gesamte Wissensdatenbank';
+    ctxBanner.appendChild(ctxTitle);
+    chatArea.appendChild(ctxBanner);
+
+    const chatLog = document.createElement('div');
+    chatLog.className = 'hub-chat-log';
+    const initMsg = document.createElement('div');
+    initMsg.className = 'msg-ai';
+    initMsg.textContent = 'AI: System erfolgreich initialisiert. Warte auf Skript-Import...';
+    chatLog.appendChild(initMsg);
+    chatArea.appendChild(chatLog);
+
+    const footer = document.createElement('div');
+    footer.className = 'hub-footer';
+    const chatInput = document.createElement('input');
+    chatInput.type = 'text'; chatInput.placeholder = 'Modell lädt...'; chatInput.className = 'hub-input';
+    chatInput.style.background = '#334155'; chatInput.style.color = 'white'; chatInput.style.border = 'none'; chatInput.disabled = true;
+    const btnSend = document.createElement('button');
+    btnSend.className = 'hub-btn'; btnSend.style.width = 'auto'; btnSend.style.paddingLeft = '24px'; btnSend.style.paddingRight = '24px';
+    btnSend.textContent = 'Senden'; btnSend.disabled = true;
+    footer.appendChild(chatInput);
+    footer.appendChild(btnSend);
+    chatArea.appendChild(footer);
+
+    mainContainer.appendChild(sidebar);
+    mainContainer.appendChild(chatArea);
+    root.appendChild(mainContainer);
+
+    // Alten Body löschen und neue Struktur einhängen
+    while (document.body.firstChild) { document.body.removeChild(document.body.firstChild); }
+    document.body.appendChild(root);
+
+    // 3. Logik-Implementierung via dynamischem Import
+    function render() {
+        linksContainer.innerHTML = '';
+        const sVal = searchInput.value.toLowerCase();
+        links.forEach((l, idx) => {
+            if (l.title.toLowerCase().includes(sVal) || l.content.toLowerCase().includes(sVal)) {
+                const card = document.createElement('div');
+                card.className = 'hub-card' + (activeContextIndex === idx ? ' active' : '');
+                
+                const cardTitle = document.createElement('b');
+                cardTitle.style.fontSize = '13px';
+                cardTitle.style.color = '#0f172a';
+                cardTitle.style.display = 'block';
+                cardTitle.textContent = l.title;
+                
+                const cardUrl = document.createElement('div');
+                cardUrl.style.fontSize = '11px';
+                cardUrl.style.color = '#64748b';
+                cardUrl.style.overflow = 'hidden';
+                cardUrl.style.textOverflow = 'ellipsis';
+                cardUrl.style.whiteSpace = 'nowrap';
+                cardUrl.textContent = l.url;
+
+                card.appendChild(cardTitle);
+                card.appendChild(cardUrl);
+                card.addEventListener('click', () => {
+                    activeContextIndex = idx;
+                    ctxTitle.textContent = l.title;
+                    render();
+                });
+                linksContainer.appendChild(card);
+            }
+        });
+    }
+
+    btnAdd.addEventListener('click', () => {
+        if (!inpTitle.value || !inpUrl.value) return;
+        links.unshift({ title: inpTitle.value, url: inpUrl.value, content: txtContent.value });
+        render();
+        inpTitle.value = ''; inpUrl.value = ''; txtContent.value = '';
+    });
+
+    searchInput.addEventListener('input', render);
+
+    // Transformers.js ESM Module direkt zur Laufzeit importieren
+    try {
+        const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0');
+        env.allowLocalModels = false;
+        
+        statusText.textContent = 'Verbinde WebGPU...';
+        initMsg.textContent = 'AI: Verbindung zu WebGPU wird aufgebaut...';
+
+        generatorPipeline = await pipeline('text-generation', 'Xenova/Qwen2.5-0.5B-Instruct', {
+            device: 'webgpu',
+            progress_callback: (d) => { if (d.status === 'progress') statusText.textContent = 'Lade KI-Modell: ' + Math.round(d.progress) + '%'; }
+        });
+
+        statusText.style.color = '#10b981';
+        statusText.textContent = 'Bereit (WebGPU)';
+        initMsg.textContent = 'AI: Lokale WebGPU-Engine ist betriebsbereit. Du kannst jetzt chatten!';
+        chatInput.removeAttribute('disabled');
+        chatInput.placeholder = 'Frage an Dokument stellen...';
+        btnSend.removeAttribute('disabled');
+    } catch (err) {
+        console.log("WebGPU fehlgeschlagen, wechsle auf CPU...", err);
+        statusText.textContent = 'CPU Modus wird geladen...';
+        try {
+            const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0');
+            generatorPipeline = await pipeline('text-generation', 'Xenova/Qwen2.5-0.5B-Instruct');
+            statusText.style.color = '#3b82f6';
+            statusText.textContent = 'Bereit (CPU Fallback)';
+            initMsg.textContent = 'AI: Lokale CPU-Engine läuft (WebGPU wurde im Firmen-Profil beschränkt).';
+            chatInput.removeAttribute('disabled');
+            chatInput.placeholder = 'Frage an Dokument stellen...';
+            btnSend.removeAttribute('disabled');
+        } catch (cpuErr) {
+            statusText.style.color = '#ef4444';
+            statusText.textContent = 'Inferenz blockiert';
+            initMsg.textContent = 'AI: Fehler beim Laden der Engine. Externe JS-Imports oder WebGPU-Zugriffe sind netzwerkseitig gesperrt.';
+        }
+    }
+
+    async function sendMessage() {
+        const val = chatInput.value.trim();
+        if (!val || !generatorPipeline) return;
+
+        chatInput.value = '';
+        const uDiv = document.createElement('div');
+        uDiv.className = 'msg-user';
+        uDiv.textContent = val;
+        chatLog.appendChild(uDiv);
+
+        const aDiv = document.createElement('div');
+        aDiv.className = 'msg-ai';
+        aDiv.textContent = 'AI: Generiere Antwort komplett lokal...';
+        chatLog.appendChild(aDiv);
+        chatLog.scrollTop = chatLog.scrollHeight;
+
+        let ctx = activeContextIndex !== null ? links[activeContextIndex].content : links.map(l => l.content).join('\n');
+
+        try {
+            const out = await generatorPipeline(val, {
+                max_new_tokens: 150,
+                system_prompt: 'Beantworte die Frage kurz basierend auf diesem Kontext:\n' + ctx
+            });
+            aDiv.textContent = 'AI: ' + out[0].generated_text.replace(val, '').trim();
+        } catch (err) {
+            aDiv.textContent = 'AI: Lokaler Inferenz-Fehler.';
+        }
+        chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    btnSend.addEventListener('click', sendMessage);
+    chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+})();

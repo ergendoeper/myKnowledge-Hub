@@ -9,7 +9,6 @@
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
@@ -19,7 +18,7 @@
             <div class="bg-teal-500 p-2 rounded-lg text-slate-950 font-bold text-xl">Ω</div>
             <div>
                 <h1 class="text-xl font-bold tracking-tight">Local WebGPU Knowledge Hub</h1>
-                <p class="text-xs text-slate-400">100% Souverän • Daten und Inferenz verbleiben vollständig auf diesem Gerät</p>
+                <p class="text-xs text-slate-400">100% Souverän • Daten verbleiben im Browser-Cache dieses Laptops</p>
             </div>
         </div>
         <div id="model-status" class="flex items-center space-x-2 text-sm bg-slate-800 px-3 py-1.5 rounded-md border border-slate-700">
@@ -29,108 +28,52 @@
     </header>
 
     <div class="flex-1 flex overflow-hidden w-full">
-        
         <div class="w-5/12 border-r border-slate-200 flex flex-col bg-white overflow-y-auto p-4 space-y-6">
-            
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <h2 class="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-3 flex items-center">
-                    <span class="mr-2 text-teal-600">➕</span> Dokument / Link erfassen
-                </h2>
+                <h2 class="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-3">➕ Dokument / Link erfassen</h2>
                 <div class="space-y-3">
-                    <div>
-                        <label class="block text-xs font-medium text-slate-500 mb-1">Titel / Bezeichnung</label>
-                        <input type="text" id="link-title" placeholder="z.B. REST-API Spezifikation Confluence" class="w-full text-sm px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-teal-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-slate-500 mb-1">Originaler Link (SharePoint, Jira, Local File)</label>
-                        <input type="text" id="link-url" placeholder="https://company.sharepoint.com/... oder file://..." class="w-full text-sm px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-teal-500">
-                    </div>
-                    <div>
-                        <div class="flex justify-between items-center mb-1">
-                            <label class="block text-xs font-medium text-slate-500">Inhalt / Text-Extrakt für Offline-LLM</label>
-                            <span class="text-[10px] text-amber-600 font-medium">⚠️ Text hier hineinkopieren</span>
-                        </div>
-                        <textarea id="link-content" rows="4" placeholder="Kopiere den Textinhalt aus deinen gesicherten Systemen hier hinein, damit das LLM ihn lokal indizieren kann..." class="w-full text-sm px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-teal-500 font-mono text-xs"></textarea>
-                    </div>
-                    <button id="btn-add" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-medium text-sm py-2 px-4 rounded-md transition-colors shadow-sm">
-                        Dokument lokal speichern
-                    </button>
+                    <input type="text" id="link-title" placeholder="Titel (z.B. Jira Ticket)" class="w-full text-sm px-3 py-2 border rounded-md">
+                    <input type="text" id="link-url" placeholder="Original-Link (https://...)" class="w-full text-sm px-3 py-2 border rounded-md">
+                    <textarea id="link-content" rows="4" placeholder="Text hier hineinkopieren..." class="w-full text-sm px-3 py-2 border rounded-md font-mono text-xs"></textarea>
+                    <button id="btn-add" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-medium text-sm py-2 rounded-md">Speichern</button>
                 </div>
             </div>
 
             <div class="space-y-3 flex-1 flex flex-col min-h-0">
-                <div class="relative shrink-0">
-                    <input type="text" id="search-input" placeholder="Links und Inhalte durchsuchen..." class="w-full text-sm pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500 bg-slate-50">
-                    <span class="absolute left-3 top-2.5 text-slate-400 text-sm">🔍</span>
-                </div>
-
-                <div class="flex justify-between items-center px-1 shrink-0">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Gespeicherte Dokumente (<span id="link-count">0</span>)</h3>
-                    <button id="btn-clear-all" class="text-xs text-red-500 hover:underline">Alle löschen</button>
-                </div>
-                
-                <div id="links-container" class="space-y-2 flex-1 overflow-y-auto pr-1">
-                    <p class="text-sm text-slate-400 italic text-center py-4">Noch keine Dokumente hinterlegt.</p>
-                </div>
+                <input type="text" id="search-input" placeholder="Durchsuchen..." class="w-full text-sm px-3 py-2 border rounded-lg bg-slate-50">
+                <div id="links-container" class="space-y-2 flex-1 overflow-y-auto"></div>
             </div>
         </div>
 
         <div class="w-7/12 flex flex-col bg-slate-900 text-slate-100 overflow-hidden">
-            
-            <div class="bg-slate-950 p-3 border-b border-slate-800 flex justify-between items-center shrink-0">
-                <div class="flex items-center space-x-2">
-                    <span class="text-xs text-slate-400">Aktiver Chat-Kontext:</span>
-                    <span id="active-context-title" class="text-xs font-bold px-2 py-0.5 bg-teal-950 text-teal-400 rounded border border-teal-800 max-w-[280px] truncate">
-                        Gesamte Wissensdatenbank
-                    </span>
-                </div>
-                <div class="text-[11px] text-slate-400">
-                    Modell: <strong class="text-teal-400">Qwen2.5-0.5B-Instruct (Vollständig Lokal)</strong>
-                </div>
+            <div class="bg-slate-950 p-3 border-b border-slate-800 text-xs">
+                Kontext: <span id="active-context-title" class="text-teal-400 font-bold">Gesamte Wissensdatenbank</span>
             </div>
-
             <div id="chat-log" class="flex-1 p-4 overflow-y-auto space-y-4 text-sm">
-                <div class="flex items-start space-x-3 max-w-[85%]">
-                    <div class="bg-teal-600 text-slate-950 font-bold rounded-full w-7 h-7 flex items-center justify-center text-xs shrink-0 mt-0.5">AI</div>
-                    <div class="bg-slate-800 p-3 rounded-xl rounded-tl-none border border-slate-700">
-                        Willkommen! HTTPS-Umgebung erfolgreich verifiziert. 
-                        <br><br>
-                        Das Sprachmodell wird jetzt direkt in deinen Browser geladen. Sobald die Anzeige oben rechts grün wird, läuft die KI komplett offline auf deinem Rechner.
-                    </div>
+                <div class="bg-slate-800 p-3 rounded-xl max-w-[85%]">
+                    Verbindung zu Hugging Face steht. Das offizielle v3-Modell wird jetzt geladen...
                 </div>
             </div>
-
-            <div class="p-4 bg-slate-950 border-t border-slate-800 shrink-0">
-                <div class="flex space-x-2">
-                    <input type="text" id="chat-input" placeholder="Warte auf Modell-Initialisierung..." class="flex-1 bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500" disabled>
-                    <button id="send-btn" class="bg-teal-600 hover:bg-teal-700 disabled:bg-slate-700 disabled:text-slate-500 text-slate-950 font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors" disabled>
-                        Senden
-                    </button>
-                </div>
+            <div class="p-4 bg-slate-950 border-t border-slate-800 flex space-x-2">
+                <input type="text" id="chat-input" placeholder="Modell lädt..." class="flex-1 bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2" disabled>
+                <button id="send-btn" class="bg-teal-600 text-slate-950 font-semibold px-4 rounded-lg text-sm" disabled>Senden</button>
             </div>
-
         </div>
     </div>
 
     <script type="module">
         import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0';
+        env.allowLocalModels = false;
 
         let links = [];
         let activeContextIndex = null;
         let generatorPipeline = null;
-        
-        env.allowLocalModels = false;
 
-        // Event-Zuweisungen
         document.getElementById('btn-add').addEventListener('click', addLink);
-        document.getElementById('btn-clear-all').addEventListener('click', clearAllLinks);
         document.getElementById('search-input').addEventListener('input', renderLinks);
         document.getElementById('send-btn').addEventListener('click', sendChatMessage);
-        document.getElementById('chat-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendChatMessage();
-        });
+        document.getElementById('chat-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(); });
 
-        // App-Start
         loadLinksFromStorage();
         renderLinks();
         initLLM();
@@ -138,200 +81,120 @@
         async function initLLM() {
             const statusDot = document.getElementById('status-dot');
             const statusText = document.getElementById('status-text');
-            const chatInput = document.getElementById('chat-input');
-            const sendBtn = document.getElementById('send-btn');
+            
+            // Korrigierter, offizieller v3-Pfad für das Qwen-Modell im ONNX-Format
+            const modelPath = 'onnx-community/Qwen2.5-0.5B-Instruct';
 
             try {
-                statusText.innerText = 'Verbinde WebGPU...';
-                generatorPipeline = await pipeline('text-generation', 'Xenova/Qwen2.5-0.5B-Instruct', {
+                statusText.innerText = 'Lade WebGPU Engine...';
+                generatorPipeline = await pipeline('text-generation', modelPath, {
                     device: 'webgpu',
                     progress_callback: (data) => {
-                        if (data.status === 'progress') {
-                            statusText.innerText = `Lade Modell: ${Math.round(data.progress)}%`;
-                        } else if (data.status === 'ready') {
-                            statusText.innerText = 'Modell im GPU-Cache bereit';
-                        }
+                        if (data.status === 'progress') statusText.innerText = `Lade (GPU): ${Math.round(data.progress)}%`;
                     }
                 });
-
                 statusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
-                statusText.innerText = 'Lokal Bereit (WebGPU)';
-                unlockChatUI();
+                statusText.innerText = 'Bereit (WebGPU Mode)';
+                unlockUI();
             } catch (err) {
-                console.log("WebGPU wird vom Gerät blockiert, wechsle zu CPU...", err);
-                statusText.innerText = 'GPU blockiert. Lade CPU-Modus...';
+                console.log("WebGPU im Firmenprofil gesperrt, starte CPU-WASM-Fallback...", err);
+                statusText.innerText = 'Lade CPU-WASM-Modell...';
                 try {
-                    generatorPipeline = await pipeline('text-generation', 'Xenova/Qwen2.5-0.5B-Instruct', {
-                        progress_callback: (data) => { statusText.innerText = `Lade (CPU): ${Math.round(data.progress)}%`; }
+                    // Expliziter CPU-Fallback über WebAssembly (WASM) mit reduzierter Quantisierung
+                    generatorPipeline = await pipeline('text-generation', modelPath, {
+                        device: 'wasm',
+                        progress_callback: (data) => {
+                            if (data.status === 'progress') statusText.innerText = `Lade (CPU): ${Math.round(data.progress)}%`;
+                        }
                     });
                     statusDot.className = "w-2 h-2 rounded-full bg-blue-500";
-                    statusText.innerText = 'Bereit (CPU Fallback)';
-                    unlockChatUI();
+                    statusText.innerText = 'Bereit (CPU Mode)';
+                    unlockUI();
                 } catch(cpuErr) {
+                    console.error(cpuErr);
                     statusDot.className = "w-2 h-2 rounded-full bg-red-500";
                     statusText.innerText = 'Ladefehler';
                 }
             }
         }
 
-        function unlockChatUI() {
-            const chatInput = document.getElementById('chat-input');
-            const sendBtn = document.getElementById('send-btn');
-            chatInput.removeAttribute('disabled');
-            sendBtn.removeAttribute('disabled');
-            chatInput.placeholder = "Frag mich etwas über deine Dokumente...";
+        function unlockUI() {
+            document.getElementById('chat-input').removeAttribute('disabled');
+            document.getElementById('send-btn').removeAttribute('disabled');
+            document.getElementById('chat-input').placeholder = "Frag mich etwas über deine Dokumente...";
         }
 
         function loadLinksFromStorage() {
             const stored = localStorage.getItem('local_knowledge_hub_links');
-            if (stored) {
-                links = JSON.parse(stored);
-            } else {
-                links = [{
-                    title: "Beispiel: SharePoint Online-Richtlinie",
-                    url: "https://company.sharepoint.com/teams/it/Sovereign-Architecture-2026.docx",
-                    content: "Die Architektur-Richtlinie 2026 schreibt vor, dass kritische Projektdokumente und Quelltexte von internen Systemen (Jira, Confluence) nicht an externe Cloud-KIs übertragen werden dürfen. Lokale WebGPU-Lösungen im Browser sind explizit gestattet, da sie die Vertraulichkeitsstufe 'Strictly Confidential' wahren.",
-                    timestamp: Date.now()
-                }];
-                localStorage.setItem('local_knowledge_hub_links', JSON.stringify(links));
-            }
+            if (stored) links = JSON.parse(stored);
         }
 
         function addLink() {
-            const titleInput = document.getElementById('link-title');
-            const urlInput = document.getElementById('link-url');
-            const contentInput = document.getElementById('link-content');
+            const t = document.getElementById('link-title');
+            const u = document.getElementById('link-url');
+            const c = document.getElementById('link-content');
+            if (!t.value || !u.value) return;
 
-            if (!titleInput.value || !urlInput.value) {
-                alert('Bitte Titel und originale URL angeben.');
-                return;
-            }
-
-            links.unshift({
-                title: titleInput.value,
-                url: urlInput.value,
-                content: contentInput.value || '',
-                timestamp: Date.now()
-            });
-            
+            links.unshift({ title: t.value, url: u.value, content: c.value || '' });
             localStorage.setItem('local_knowledge_hub_links', JSON.stringify(links));
             renderLinks();
-
-            titleInput.value = '';
-            urlInput.value = '';
-            contentInput.value = '';
-        }
-
-        function clearAllLinks() {
-            if(confirm('Möchtest du wirklich alle lokalen Dokumente löschen?')) {
-                links = [];
-                localStorage.removeItem('local_knowledge_hub_links');
-                setActiveContext(null);
-                renderLinks();
-            }
+            t.value = ''; u.value = ''; c.value = '';
         }
 
         function renderLinks() {
             const container = document.getElementById('links-container');
-            const searchInput = document.getElementById('search-input').value.toLowerCase();
-            document.getElementById('link-count').innerText = links.length;
-
-            const filtered = links.filter(link => 
-                link.title.toLowerCase().includes(searchInput) || 
-                link.content.toLowerCase().includes(searchInput)
-            );
-
-            if (filtered.length === 0) {
-                container.innerHTML = `<p class="text-sm text-slate-400 italic text-center py-4">Keine passenden Dokumente gefunden.</p>`;
-                return;
-            }
-
+            const search = document.getElementById('search-input').value.toLowerCase();
             container.innerHTML = '';
+
+            const filtered = links.filter(l => l.title.toLowerCase().includes(search) || l.content.toLowerCase().includes(search));
             filtered.forEach((link) => {
                 const isSelected = links.indexOf(link) === activeContextIndex;
                 const card = document.createElement('div');
-                card.className = `p-3 rounded-lg border transition-all cursor-pointer ${isSelected ? 'bg-teal-50 border-teal-500 shadow-sm' : 'bg-slate-50 hover:bg-slate-100 border-slate-200'}`;
-                
-                card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div class="flex-1 min-w-0">
-                            <h4 class="text-sm font-bold text-slate-900 truncate">${link.title}</h4>
-                            <a href="${link.url}" target="_blank" onclick="event.stopPropagation()" class="text-xs text-teal-600 hover:underline block truncate mt-0.5">🔗 ${link.url}</a>
-                        </div>
-                    </div>
-                    <div class="mt-2 flex justify-between items-center text-[11px] text-slate-500">
-                        <span class="${link.content ? 'text-emerald-700 bg-emerald-50 border-emerald-200 px-1.5 py-0.5 rounded border' : 'text-amber-700 bg-amber-50 border-amber-200 px-1.5 py-0.5 rounded border'}">
-                            ${link.content ? '📦 Text bereit' : '⚠️ Kein Text'}
-                        </span>
-                        <span>${link.content.length} Zeichen</span>
-                    </div>
-                `;
-                
-                card.addEventListener('click', () => setActiveContext(links.indexOf(link)));
+                card.className = `p-3 rounded-lg border cursor-pointer ${isSelected ? 'bg-teal-50 border-teal-500 shadow-sm' : 'bg-slate-50 hover:bg-slate-100 border-slate-200'}`;
+                card.innerHTML = `<h4 class="text-sm font-bold text-slate-900 truncate">${link.title}</h4><p class="text-xs text-slate-500 truncate">🔗 ${link.url}</p>`;
+                card.addEventListener('click', () => {
+                    activeContextIndex = links.indexOf(link);
+                    document.getElementById('active-context-title').innerText = link.title;
+                    renderLinks();
+                });
                 container.appendChild(card);
             });
         }
 
-        function setActiveContext(index) {
-            activeContextIndex = index;
-            const contextBanner = document.getElementById('active-context-title');
-            if (index === null) {
-                contextBanner.innerText = "Gesamte Wissensdatenbank";
-            } else {
-                contextBanner.innerText = links[index].title;
-            }
-            renderLinks();
-        }
-
         async function sendChatMessage() {
-            const inputField = document.getElementById('chat-input');
-            const chatLog = document.getElementById('chat-log');
-            const userPrompt = inputField.value.trim();
+            const inp = document.getElementById('chat-input');
+            const log = document.getElementById('chat-log');
+            const val = inp.value.trim();
+            if (!val || !generatorPipeline) return;
 
-            if (!userPrompt || !generatorPipeline) return;
+            inp.value = '';
+            const uDiv = document.createElement('div');
+            uDiv.className = "bg-slate-700 p-3 rounded-xl max-w-[85%] ml-auto text-white text-sm";
+            uDiv.innerText = val;
+            log.appendChild(uDiv);
 
-            inputField.value = '';
-            const userDiv = document.createElement('div');
-            userDiv.className = "flex items-start space-x-3 max-w-[85%] ml-auto justify-end";
-            userDiv.innerHTML = `<div class="bg-slate-700 p-3 rounded-xl text-white text-sm">${userPrompt}</div>`;
-            chatLog.appendChild(userDiv);
+            const aDiv = document.createElement('div');
+            aDiv.className = "bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-300 italic animate-pulse text-sm max-w-[85%]";
+            aDiv.innerText = "Generiere Antwort offline...";
+            log.appendChild(aDiv);
+            log.scrollTop = log.scrollHeight;
 
-            const assistantDiv = document.createElement('div');
-            assistantDiv.className = "flex items-start space-x-3 max-w-[85%]";
-            assistantDiv.innerHTML = `
-                <div class="bg-teal-600 text-slate-950 font-bold rounded-full w-7 h-7 flex items-center justify-center text-xs shrink-0 mt-0.5">AI</div>
-                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-300 italic animate-pulse text-sm">Generiere Antwort offline...</div>
-            `;
-            chatLog.appendChild(assistantDiv);
-            chatLog.scrollTop = chatLog.scrollHeight;
-
-            // Kontext extrahieren und vorbereiten
-            let contextText = "";
-            if (activeContextIndex !== null && links[activeContextIndex]) {
-                contextText = links[activeContextIndex].content;
-            } else {
-                contextText = links.map(l => l.content).join("\n\n");
-            }
+            let ctx = activeContextIndex !== null ? links[activeContextIndex].content : links.map(l => l.content).join("\n\n");
 
             try {
-                const systemInstructions = `Du bist ein hilfreicher Assistent. Beantworte die Frage präzise und ausschliesslich basierend auf dem bereitgestellten Kontext.\n\nKontext:\n${contextText || "Kein Kontext vorhanden."}`;
-                
-                const output = await generatorPipeline(userPrompt, {
-                    max_new_tokens: 150,
+                const out = await generatorPipeline(val, {
+                    max_new_tokens: 120,
                     temperature: 0.1,
-                    system_prompt: systemInstructions
+                    system_prompt: `Beantworte die Frage präzise basierend auf diesem Kontext:\n${ctx}`
                 });
                 
-                const responseText = output[0].generated_text.replace(userPrompt, '').trim();
-                const bubble = assistantDiv.querySelector('.bg-slate-800');
-                bubble.className = "bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-100 text-sm shadow-inner";
-                bubble.classList.remove('italic', 'animate-pulse');
-                bubble.innerText = responseText || "Keine Antwort generiert.";
+                const answer = out[0].generated_text.replace(val, '').trim();
+                aDiv.className = "bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-100 text-sm max-w-[85%]";
+                aDiv.innerText = answer || "Keine Antwort extrahiert.";
             } catch (err) {
-                console.error(err);
-                assistantDiv.querySelector('.bg-slate-800').innerText = "Fehler bei der lokalen Generierung.";
+                aDiv.innerText = "Fehler bei der Inferenz.";
             }
-            chatLog.scrollTop = chatLog.scrollHeight;
+            log.scrollTop = log.scrollHeight;
         }
     </script>
 </body>

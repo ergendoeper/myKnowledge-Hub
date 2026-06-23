@@ -51,11 +51,11 @@
             </div>
             <div id="chat-log" class="flex-1 p-4 overflow-y-auto space-y-4 text-sm">
                 <div class="bg-slate-800 p-3 rounded-xl max-w-[85%]">
-                    Verbindung zu Hugging Face steht. Das offizielle v3-Modell wird jetzt geladen...
+                    System bereit. Ergänze Dokumente und stelle gezielte Fragen. Die Inferenz erfolgt lokal.
                 </div>
             </div>
             <div class="p-4 bg-slate-950 border-t border-slate-800 flex space-x-2">
-                <input type="text" id="chat-input" placeholder="Modell lädt..." class="flex-1 bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2" disabled>
+                <input type="text" id="chat-input" placeholder="Modell lädt..." class="flex-1 bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500" disabled>
                 <button id="send-btn" class="bg-teal-600 text-slate-950 font-semibold px-4 rounded-lg text-sm" disabled>Senden</button>
             </div>
         </div>
@@ -81,8 +81,6 @@
         async function initLLM() {
             const statusDot = document.getElementById('status-dot');
             const statusText = document.getElementById('status-text');
-            
-            // Korrigierter, offizieller v3-Pfad für das Qwen-Modell im ONNX-Format
             const modelPath = 'onnx-community/Qwen2.5-0.5B-Instruct';
 
             try {
@@ -100,7 +98,6 @@
                 console.log("WebGPU im Firmenprofil gesperrt, starte CPU-WASM-Fallback...", err);
                 statusText.innerText = 'Lade CPU-WASM-Modell...';
                 try {
-                    // Expliziter CPU-Fallback über WebAssembly (WASM) mit reduzierter Quantisierung
                     generatorPipeline = await pipeline('text-generation', modelPath, {
                         device: 'wasm',
                         progress_callback: (data) => {
@@ -111,7 +108,6 @@
                     statusText.innerText = 'Bereit (CPU Mode)';
                     unlockUI();
                 } catch(cpuErr) {
-                    console.error(cpuErr);
                     statusDot.className = "w-2 h-2 rounded-full bg-red-500";
                     statusText.innerText = 'Ladefehler';
                 }
@@ -180,19 +176,30 @@
             log.scrollTop = log.scrollHeight;
 
             let ctx = activeContextIndex !== null ? links[activeContextIndex].content : links.map(l => l.content).join("\n\n");
+            if (!ctx.trim()) ctx = "Kein relevanter Text-Inhalt hinterlegt.";
 
             try {
-                const out = await generatorPipeline(val, {
-                    max_new_tokens: 120,
-                    temperature: 0.1,
-                    system_prompt: `Beantworte die Frage präzise basierend auf diesem Kontext:\n${ctx}`
+                // Strukturierung des vorschriftsmäßigen Qwen Chat-Templates
+                const messages = [
+                    { role: 'system', content: `Du bist ein präziser IT-Assistent. Beantworte die Fragen auf Deutsch, sachlich und ausschliesslich basierend auf dem bereitgestellten Kontext. Nutze keine externen Fakten.\n\nKontext:\n${ctx}` },
+                    { role: 'user', content: val }
+                ];
+
+                const out = await generatorPipeline(messages, {
+                    max_new_tokens: 160,
+                    temperature: 0.1,         // Minimiert Halluzinationen dramatisch
+                    top_k: 20,
+                    repetition_penalty: 1.15   // Verhindert Textschleifen auf der CPU
                 });
                 
-                const answer = out[0].generated_text.replace(val, '').trim();
+                // Saubere Extraktion des Assistenten-Textes aus dem Modell-Output
+                const answer = out[0].generated_text[out[0].generated_text.length - 1].content.trim();
+                
                 aDiv.className = "bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-100 text-sm max-w-[85%]";
-                aDiv.innerText = answer || "Keine Antwort extrahiert.";
+                aDiv.innerText = answer || "Keine Antwort aus dem Kontext extrahierbar.";
             } catch (err) {
-                aDiv.innerText = "Fehler bei der Inferenz.";
+                console.error(err);
+                aDiv.innerText = "Fehler bei der lokalen Generierung.";
             }
             log.scrollTop = log.scrollHeight;
         }

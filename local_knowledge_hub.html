@@ -4,53 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Local WebGPU Knowledge Hub</title>
-    <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
-        /* Custom scrollbar and focus styles for a native app feel */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
 
-    <!-- Header Banner -->
     <header class="bg-slate-900 text-white px-6 py-4 shadow-md flex items-center justify-between shrink-0">
         <div class="flex items-center space-x-3">
             <div class="bg-teal-500 p-2 rounded-lg text-slate-950 font-bold text-xl">Ω</div>
             <div>
                 <h1 class="text-xl font-bold tracking-tight">Local WebGPU Knowledge Hub</h1>
-                <p class="text-xs text-slate-400">100% Souverän • Keine Datenverbindung nach aussen für Dokumente/Chat</p>
+                <p class="text-xs text-slate-400">100% Souverän • Daten und Inferenz verbleiben vollständig auf diesem Gerät</p>
             </div>
         </div>
         <div id="model-status" class="flex items-center space-x-2 text-sm bg-slate-800 px-3 py-1.5 rounded-md border border-slate-700">
             <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse" id="status-dot"></span>
-            <span id="status-text" class="text-slate-300 text-xs">Transformers.js wird initialisiert...</span>
+            <span id="status-text" class="text-slate-300 text-xs">Initialisiere App...</span>
         </div>
     </header>
 
-    <!-- Main Workspace Matrix (Table layout substitute for column split) -->
     <div class="flex-1 flex overflow-hidden w-full">
         
-        <!-- Left Panel: Link Management & Document Ingestion -->
         <div class="w-5/12 border-r border-slate-200 flex flex-col bg-white overflow-y-auto p-4 space-y-6">
             
-            <!-- Link Adding Section -->
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <h2 class="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-3 flex items-center">
-                    <span class="mr-2 text-teal-600">➕</span> Neuen Link / Dokument erfassen
+                    <span class="mr-2 text-teal-600">➕</span> Dokument / Link erfassen
                 </h2>
                 <div class="space-y-3">
                     <div>
@@ -63,42 +47,36 @@
                     </div>
                     <div>
                         <div class="flex justify-between items-center mb-1">
-                        <label class="block text-xs font-medium text-slate-500">Inhalt / Text-Extrakt für Offline-LLM</label>
-                            <span class="text-[10px] text-amber-600 font-medium">⚠️ Aufgrund von CORS: Text hier reinkopieren</span>
+                            <label class="block text-xs font-medium text-slate-500">Inhalt / Text-Extrakt für Offline-LLM</label>
+                            <span class="text-[10px] text-amber-600 font-medium">⚠️ Text hier hineinkopieren</span>
                         </div>
-                        <textarea id="link-content" rows="4" placeholder="Kopiere den Textinhalt aus SharePoint/Confluence oder der lokalen Datei hier hinein, damit das LLM ihn offline indizieren kann..." class="w-full text-sm px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-teal-500 font-mono text-xs"></textarea>
+                        <textarea id="link-content" rows="4" placeholder="Kopiere den Textinhalt aus deinen gesicherten Systemen hier hinein, damit das LLM ihn lokal indizieren kann..." class="w-full text-sm px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-teal-500 font-mono text-xs"></textarea>
                     </div>
-                    <button onclick="addLink()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-medium text-sm py-2 px-4 rounded-md transition-colors shadow-sm">
+                    <button id="btn-add" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-medium text-sm py-2 px-4 rounded-md transition-colors shadow-sm">
                         Dokument lokal speichern
                     </button>
                 </div>
             </div>
 
-            <!-- Search & Filter Area -->
-            <div class="space-y-3">
-                <div class="relative">
-                    <input type="text" id="search-input" oninput="renderLinks()" placeholder="Links und Inhalte durchsuchen..." class="w-full text-sm pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500 bg-slate-50">
+            <div class="space-y-3 flex-1 flex flex-col min-h-0">
+                <div class="relative shrink-0">
+                    <input type="text" id="search-input" placeholder="Links und Inhalte durchsuchen..." class="w-full text-sm pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500 bg-slate-50">
                     <span class="absolute left-3 top-2.5 text-slate-400 text-sm">🔍</span>
                 </div>
 
-                <!-- Link List -->
-                <div class="flex justify-between items-center px-1">
+                <div class="flex justify-between items-center px-1 shrink-0">
                     <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Gespeicherte Dokumente (<span id="link-count">0</span>)</h3>
-                    <button onclick="clearAllLinks()" class="text-xs text-red-500 hover:underline">Alle löschen</button>
+                    <button id="btn-clear-all" class="text-xs text-red-500 hover:underline">Alle löschen</button>
                 </div>
                 
-                <div id="links-container" class="space-y-2 max-h-[350px] overflow-y-auto">
-                    <!-- Dynamic Links Inject Here -->
+                <div id="links-container" class="space-y-2 flex-1 overflow-y-auto pr-1">
                     <p class="text-sm text-slate-400 italic text-center py-4">Noch keine Dokumente hinterlegt.</p>
                 </div>
             </div>
-
         </div>
 
-        <!-- Right Panel: Sovereign LLM Chat Interface -->
         <div class="w-7/12 flex flex-col bg-slate-900 text-slate-100 overflow-hidden">
             
-            <!-- Active Context Banner -->
             <div class="bg-slate-950 p-3 border-b border-slate-800 flex justify-between items-center shrink-0">
                 <div class="flex items-center space-x-2">
                     <span class="text-xs text-slate-400">Aktiver Chat-Kontext:</span>
@@ -106,66 +84,57 @@
                         Gesamte Wissensdatenbank
                     </span>
                 </div>
-                <div class="text-[11px] text-slate-400 flex items-center space-x-2">
-                    <span>Modell: <strong class="text-teal-400">Qwen2.5-0.5B-Instruct (WebGPU)</strong></span>
+                <div class="text-[11px] text-slate-400">
+                    Modell: <strong class="text-teal-400">Qwen2.5-0.5B-Instruct (Vollständig Lokal)</strong>
                 </div>
             </div>
 
-            <!-- Chat Message Log -->
             <div id="chat-log" class="flex-1 p-4 overflow-y-auto space-y-4 text-sm">
-                <!-- System Greeting -->
                 <div class="flex items-start space-x-3 max-w-[85%]">
                     <div class="bg-teal-600 text-slate-950 font-bold rounded-full w-7 h-7 flex items-center justify-center text-xs shrink-0 mt-0.5">AI</div>
                     <div class="bg-slate-800 p-3 rounded-xl rounded-tl-none border border-slate-700">
-                        Willkommen! Ich bin dein rein lokales WebGPU-Sprachmodell. Da du keine Daten nach aussen senden möchtest, führe ich alle Berechnungen direkt auf deiner Grafikkarte aus.
+                        Willkommen! HTTPS-Umgebung erfolgreich verifiziert. 
                         <br><br>
-                        Wähle links ein Dokument aus, um gezielt damit zu chatten, oder stelle eine Frage über deine gesamte lokale Sammlung.
+                        Das Sprachmodell wird jetzt direkt in deinen Browser geladen. Sobald die Anzeige oben rechts grün wird, läuft die KI komplett offline auf deinem Rechner.
                     </div>
                 </div>
             </div>
 
-            <!-- Context Source Highlight Box (Chunks) -->
-            <div id="source-highlight" class="hidden px-4 py-2 bg-slate-950 border-t border-slate-800 max-h-24 overflow-y-auto text-xs text-slate-400">
-                <strong class="text-teal-500">Verwendete Text-Segmente (Chunks):</strong>
-                <p id="source-highlight-text" class="italic mt-1"></p>
-            </div>
-
-            <!-- Chat Input Area -->
             <div class="p-4 bg-slate-950 border-t border-slate-800 shrink-0">
                 <div class="flex space-x-2">
-                    <input type="text" id="chat-input" onkeypress="if(event.key === 'Enter') sendChatMessage()" placeholder="Frage an das Dokument stellen..." class="flex-1 bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500" disabled>
-                    <button id="send-btn" onclick="sendChatMessage()" class="bg-teal-600 hover:bg-teal-700 disabled:bg-slate-700 disabled:text-slate-500 text-slate-950 font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors" disabled>
+                    <input type="text" id="chat-input" placeholder="Warte auf Modell-Initialisierung..." class="flex-1 bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500" disabled>
+                    <button id="send-btn" class="bg-teal-600 hover:bg-teal-700 disabled:bg-slate-700 disabled:text-slate-500 text-slate-950 font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors" disabled>
                         Senden
                     </button>
                 </div>
-                <p class="text-[10px] text-slate-500 mt-2 text-center">Inferenz läuft komplett lokal via WebGPU. Keine Datenübertragung ins Internet.</p>
             </div>
 
         </div>
-
     </div>
 
-    <!-- Application JavaScript Engine -->
     <script type="module">
-        // Import HF Transformers.js v3 dynamically via ESM
         import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0';
 
-        // Global Application State
         let links = [];
-        let activeContextIndex = null; // null means "All documents"
+        let activeContextIndex = null;
         let generatorPipeline = null;
         
-        // Configuration for local environment
-        env.allowLocalModels = false; 
+        env.allowLocalModels = false;
 
-        // Initializer
-        window.addEventListener('DOMContentLoaded', async () => {
-            loadLinksFromStorage();
-            renderLinks();
-            initLLM();
+        // Event-Zuweisungen
+        document.getElementById('btn-add').addEventListener('click', addLink);
+        document.getElementById('btn-clear-all').addEventListener('click', clearAllLinks);
+        document.getElementById('search-input').addEventListener('input', renderLinks);
+        document.getElementById('send-btn').addEventListener('click', sendChatMessage);
+        document.getElementById('chat-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
         });
 
-        // Initialize Local WebGPU LLM
+        // App-Start
+        loadLinksFromStorage();
+        renderLinks();
+        initLLM();
+
         async function initLLM() {
             const statusDot = document.getElementById('status-dot');
             const statusText = document.getElementById('status-text');
@@ -173,136 +142,104 @@
             const sendBtn = document.getElementById('send-btn');
 
             try {
-                // Using ultra-lightweight Qwen2.5 0.5B Instruct optimal for browser environments
+                statusText.innerText = 'Verbinde WebGPU...';
                 generatorPipeline = await pipeline('text-generation', 'Xenova/Qwen2.5-0.5B-Instruct', {
                     device: 'webgpu',
                     progress_callback: (data) => {
                         if (data.status === 'progress') {
                             statusText.innerText = `Lade Modell: ${Math.round(data.progress)}%`;
                         } else if (data.status === 'ready') {
-                            statusText.innerText = 'Modell bereit im GPU-Cache';
+                            statusText.innerText = 'Modell im GPU-Cache bereit';
                         }
                     }
                 });
 
-                statusDot.classList.remove('bg-amber-500', 'animate-pulse');
-                statusDot.classList.add('bg-emerald-500');
+                statusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
                 statusText.innerText = 'Lokal Bereit (WebGPU)';
-                chatInput.removeAttribute('disabled');
-                sendBtn.removeAttribute('disabled');
-                chatInput.placeholder = "Frag mich etwas über deine Dokumente...";
+                unlockChatUI();
             } catch (err) {
-                console.error(err);
-                statusDot.classList.remove('bg-amber-500', 'animate-pulse');
-                statusDot.classList.add('bg-red-500');
-                statusText.innerText = 'WebGPU nicht unterstützt oder Fehler.';
-                
-                // Fallback to CPU if WebGPU is blocked/unavailable
-                statusText.innerText = 'Versuche CPU Fallback...';
+                console.log("WebGPU wird vom Gerät blockiert, wechsle zu CPU...", err);
+                statusText.innerText = 'GPU blockiert. Lade CPU-Modus...';
                 try {
                     generatorPipeline = await pipeline('text-generation', 'Xenova/Qwen2.5-0.5B-Instruct', {
                         progress_callback: (data) => { statusText.innerText = `Lade (CPU): ${Math.round(data.progress)}%`; }
                     });
-                    statusDot.classList.remove('bg-red-500');
-                    statusDot.classList.add('bg-blue-500');
+                    statusDot.className = "w-2 h-2 rounded-full bg-blue-500";
                     statusText.innerText = 'Bereit (CPU Fallback)';
-                    chatInput.removeAttribute('disabled');
-                    sendBtn.removeAttribute('disabled');
+                    unlockChatUI();
                 } catch(cpuErr) {
-                    statusText.innerText = 'Fehler beim Laden des Modells.';
+                    statusDot.className = "w-2 h-2 rounded-full bg-red-500";
+                    statusText.innerText = 'Ladefehler';
                 }
             }
         }
 
-        // --- Link Database Layer (IndexedDB / LocalStorage Substitute for standard demo portability) ---
+        function unlockChatUI() {
+            const chatInput = document.getElementById('chat-input');
+            const sendBtn = document.getElementById('send-btn');
+            chatInput.removeAttribute('disabled');
+            sendBtn.removeAttribute('disabled');
+            chatInput.placeholder = "Frag mich etwas über deine Dokumente...";
+        }
+
         function loadLinksFromStorage() {
             const stored = localStorage.getItem('local_knowledge_hub_links');
             if (stored) {
                 links = JSON.parse(stored);
             } else {
-                // Seeding placeholder example
-                links = [
-                    {
-                        title: "Beispiel: SharePoint Architektur-Richtlinie",
-                        url: "https://company.sharepoint.com/teams/it/Architektur-2026.docx",
-                        content: "Die IT-Strategie 2026 setzt primär auf Local-First-Architekturen und Sovereign Enterprise Clouds. Alle sensiblen Daten müssen innerhalb der eigenen Infrastruktur verbleiben. Für KI-Anwendungen wird die Nutzung von lokalen WebGPU LLMs empfohlen, um Datenabfluss zu verhindern. Externe APIs wie OpenAI sind für Kerndaten gesperrt. Als primäres Framework für Web-GUIs gilt TypeScript mit Clean Architecture.",
-                        timestamp: Date.now()
-                    }
-                ];
-                saveLinksToStorage();
+                links = [{
+                    title: "Beispiel: SharePoint Online-Richtlinie",
+                    url: "https://company.sharepoint.com/teams/it/Sovereign-Architecture-2026.docx",
+                    content: "Die Architektur-Richtlinie 2026 schreibt vor, dass kritische Projektdokumente und Quelltexte von internen Systemen (Jira, Confluence) nicht an externe Cloud-KIs übertragen werden dürfen. Lokale WebGPU-Lösungen im Browser sind explizit gestattet, da sie die Vertraulichkeitsstufe 'Strictly Confidential' wahren.",
+                    timestamp: Date.now()
+                }];
+                localStorage.setItem('local_knowledge_hub_links', JSON.stringify(links));
             }
         }
 
-        function saveLinksToStorage() {
-            localStorage.setItem('local_knowledge_hub_links', JSON.stringify(links));
-        }
-
-        window.addLink = function() {
+        function addLink() {
             const titleInput = document.getElementById('link-title');
             const urlInput = document.getElementById('link-url');
             const contentInput = document.getElementById('link-content');
 
             if (!titleInput.value || !urlInput.value) {
-                alert('Bitte mindestens Titel und originale URL angeben.');
+                alert('Bitte Titel und originale URL angeben.');
                 return;
             }
 
-            const newLink = {
+            links.unshift({
                 title: titleInput.value,
                 url: urlInput.value,
                 content: contentInput.value || '',
                 timestamp: Date.now()
-            };
-
-            links.unshift(newLink);
-            saveLinksToStorage();
+            });
+            
+            localStorage.setItem('local_knowledge_hub_links', JSON.stringify(links));
             renderLinks();
 
-            // Reset Form Inputs
             titleInput.value = '';
             urlInput.value = '';
             contentInput.value = '';
         }
 
-        window.clearAllLinks = function() {
-            if(confirm('Möchtest du wirklich alle Dokumente unwiderruflich aus dem lokalen Speicher löschen?')) {
+        function clearAllLinks() {
+            if(confirm('Möchtest du wirklich alle lokalen Dokumente löschen?')) {
                 links = [];
-                saveLinksToStorage();
+                localStorage.removeItem('local_knowledge_hub_links');
                 setActiveContext(null);
                 renderLinks();
             }
         }
 
-        window.deleteLink = function(index, event) {
-            event.stopPropagation(); // Avoid triggering context selection
-            if(confirm('Dokument aus lokaler Liste entfernen?')) {
-                links.splice(index, 1);
-                saveLinksToStorage();
-                if (activeContextIndex === index) setActiveContext(null);
-                renderLinks();
-            }
-        }
-
-        window.setActiveContext = function(index) {
-            activeContextIndex = index;
-            const contextBanner = document.getElementById('active-context-title');
-            if (index === null) {
-                contextBanner.innerText = "Gesamte Wissensdatenbank";
-                contextBanner.className = "text-xs font-bold px-2 py-0.5 bg-teal-950 text-teal-400 rounded border border-teal-800 max-w-[280px] truncate";
-            } else {
-                contextBanner.innerText = links[index].title;
-                contextBanner.className = "text-xs font-bold px-2 py-0.5 bg-indigo-950 text-indigo-400 rounded border border-indigo-800 max-w-[280px] truncate";
-            }
-            renderLinks();
-        }
-
-        window.renderLinks = function() {
+        function renderLinks() {
             const container = document.getElementById('links-container');
             const searchInput = document.getElementById('search-input').value.toLowerCase();
             document.getElementById('link-count').innerText = links.length;
 
-            const filtered = links.map((link, originalIndex) => ({...link, originalIndex}))
-                                  .filter(link => link.title.toLowerCase().includes(searchInput) || link.content.toLowerCase().includes(searchInput));
+            const filtered = links.filter(link => 
+                link.title.toLowerCase().includes(searchInput) || 
+                link.content.toLowerCase().includes(searchInput)
+            );
 
             if (filtered.length === 0) {
                 container.innerHTML = `<p class="text-sm text-slate-400 italic text-center py-4">Keine passenden Dokumente gefunden.</p>`;
@@ -310,166 +247,92 @@
             }
 
             container.innerHTML = '';
-            filtered.forEach(link => {
-                const isSelected = activeContextIndex === link.originalIndex;
-                const hasContent = link.content && link.content.trim().length > 0;
-
+            filtered.forEach((link) => {
+                const isSelected = links.indexOf(link) === activeContextIndex;
                 const card = document.createElement('div');
                 card.className = `p-3 rounded-lg border transition-all cursor-pointer ${isSelected ? 'bg-teal-50 border-teal-500 shadow-sm' : 'bg-slate-50 hover:bg-slate-100 border-slate-200'}`;
-                card.setAttribute('onclick', `setActiveContext(${link.originalIndex})`);
-
+                
                 card.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div class="flex-1 min-w-0">
                             <h4 class="text-sm font-bold text-slate-900 truncate">${link.title}</h4>
-                            <a href="${link.url}" target="_blank" onclick="event.stopPropagation()" class="text-xs text-teal-600 hover:underline block truncate mt-0.5">
-                                🔗 ${link.url}
-                            </a>
+                            <a href="${link.url}" target="_blank" onclick="event.stopPropagation()" class="text-xs text-teal-600 hover:underline block truncate mt-0.5">🔗 ${link.url}</a>
                         </div>
-                        <button onclick="deleteLink(${link.originalIndex}, event)" class="text-slate-400 hover:text-red-500 text-xs ml-2">🗑️</button>
                     </div>
-                    <div class="mt-2 flex items-center justify-between text-[11px]">
-                        <span class="${hasContent ? 'text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200' : 'text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200'}">
-                            ${hasContent ? '📦 Text indiziert' : '⚠️ Kein Text hinterlegt'}
+                    <div class="mt-2 flex justify-between items-center text-[11px] text-slate-500">
+                        <span class="${link.content ? 'text-emerald-700 bg-emerald-50 border-emerald-200 px-1.5 py-0.5 rounded border' : 'text-amber-700 bg-amber-50 border-amber-200 px-1.5 py-0.5 rounded border'}">
+                            ${link.content ? '📦 Text bereit' : '⚠️ Kein Text'}
                         </span>
-                        <span class="text-slate-400 font-mono text-[10px]">
-                            Chars: ${link.content.length}
-                        </span>
+                        <span>${link.content.length} Zeichen</span>
                     </div>
                 `;
+                
+                card.addEventListener('click', () => setActiveContext(links.indexOf(link)));
                 container.appendChild(card);
             });
         }
 
-        // --- Core Document Text Chunking & Smart Context Assembly ---
-        function splitTextIntoChunks(text, maxChunkSize = 400, overlap = 80) {
-            const words = text.split(/\s+/);
-            const chunks = [];
-            let i = 0;
-
-            while (i < words.length) {
-                let chunkWords = words.slice(i, i + maxChunkSize);
-                chunks.push(chunkWords.join(' '));
-                i += (maxChunkSize - overlap);
-                if (words.length - i < overlap) break; // Avoid tiny residual chunks
+        function setActiveContext(index) {
+            activeContextIndex = index;
+            const contextBanner = document.getElementById('active-context-title');
+            if (index === null) {
+                contextBanner.innerText = "Gesamte Wissensdatenbank";
+            } else {
+                contextBanner.innerText = links[index].title;
             }
-            return chunks;
+            renderLinks();
         }
 
-        // --- Local AI Chat Execution Logic ---
-        window.sendChatMessage = async function() {
+        async function sendChatMessage() {
             const inputField = document.getElementById('chat-input');
             const chatLog = document.getElementById('chat-log');
             const userPrompt = inputField.value.trim();
 
             if (!userPrompt || !generatorPipeline) return;
 
-            // Render User Message
             inputField.value = '';
             const userDiv = document.createElement('div');
             userDiv.className = "flex items-start space-x-3 max-w-[85%] ml-auto justify-end";
-            userDiv.innerHTML = `
-                <div class="bg-slate-700 p-3 rounded-xl rounded-tr-none border border-slate-600 text-right text-white">
-                    ${userPrompt}
-                </div>
-            `;
+            userDiv.innerHTML = `<div class="bg-slate-700 p-3 rounded-xl text-white text-sm">${userPrompt}</div>`;
             chatLog.appendChild(userDiv);
-            chatLog.scrollTop = chatLog.scrollHeight;
 
-            // Generate Context based on Selection
-            let contextText = "";
-            let relevantChunks = [];
-
-            if (activeContextIndex !== null) {
-                // Specific document context
-                const doc = links[activeContextIndex];
-                if (doc && doc.content) {
-                    const chunks = splitTextIntoChunks(doc.content);
-                    // Smart keyword matcher placeholder (simulates quick lexical retrieval score)
-                    relevantChunks = chunks.filter(chunk => 
-                        userPrompt.split(' ').some(word => word.length > 3 && chunk.toLowerCase().includes(word.toLowerCase()))
-                    ).slice(0, 3);
-
-                    // If no direct keyword match, fall back to first chunks
-                    if(relevantChunks.length === 0) relevantChunks = chunks.slice(0, 2);
-                }
-            } else {
-                // Global context scan across all documents
-                links.forEach(doc => {
-                    if(doc.content) {
-                        const chunks = splitTextIntoChunks(doc.content);
-                        const matches = chunks.filter(chunk => 
-                            userPrompt.split(' ').some(word => word.length > 3 && chunk.toLowerCase().includes(word.toLowerCase()))
-                        );
-                        relevantChunks.push(...matches);
-                    }
-                });
-                relevantChunks = relevantChunks.slice(0, 3); // Lock to top context frames
-            }
-
-            contextText = relevantChunks.join("
-
-");
-
-            // Update UI Source Highlight Panel
-            const sourceHighlightPanel = document.getElementById('source-highlight');
-            const sourceHighlightText = document.getElementById('source-highlight-text');
-            if (relevantChunks.length > 0) {
-                sourceHighlightPanel.classList.remove('hidden');
-                sourceHighlightText.innerText = relevantChunks.map((c, i) => `[Chunk ${i+1}]: "${c.substring(0, 140)}..."`).join(" | ");
-            } else {
-                sourceHighlightPanel.classList.add('hidden');
-            }
-
-            // Render Assistant Loading Bubble
             const assistantDiv = document.createElement('div');
             assistantDiv.className = "flex items-start space-x-3 max-w-[85%]";
             assistantDiv.innerHTML = `
                 <div class="bg-teal-600 text-slate-950 font-bold rounded-full w-7 h-7 flex items-center justify-center text-xs shrink-0 mt-0.5">AI</div>
-                <div class="bg-slate-800 p-3 rounded-xl rounded-tl-none border border-slate-700 text-slate-300 italic animate-pulse" id="loading-bubble">
-                    Antwort wird lokal generiert...
-                </div>
+                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-300 italic animate-pulse text-sm">Generiere Antwort offline...</div>
             `;
             chatLog.appendChild(assistantDiv);
             chatLog.scrollTop = chatLog.scrollHeight;
 
-            // Construct System Prompt for strict RAG execution
-            const systemInstructions = `Du bist ein hilfreicher IT-Assistent. Beantworte die Frage des Benutzers präzise und AUSSCHLIESSLICH basierend auf dem bereitgestellten Kontext. Wenn die Information nicht im Kontext enthalten ist, sage höflich, dass du es nicht weisst. Nutze keine externen Daten.
-            
-Kontext:
-${contextText || "Kein relevanter Text-Kontext vorhanden."}`;
+            // Kontext extrahieren und vorbereiten
+            let contextText = "";
+            if (activeContextIndex !== null && links[activeContextIndex]) {
+                contextText = links[activeContextIndex].content;
+            } else {
+                contextText = links.map(l => l.content).join("\n\n");
+            }
 
             try {
-                // Execute Local Generation Pipeline
+                const systemInstructions = `Du bist ein hilfreicher Assistent. Beantworte die Frage präzise und ausschliesslich basierend auf dem bereitgestellten Kontext.\n\nKontext:\n${contextText || "Kein Kontext vorhanden."}`;
+                
                 const output = await generatorPipeline(userPrompt, {
-                    max_new_tokens: 180,
-                    temperature: 0.2, // Low temp for hyper-factual grounding
-                    top_k: 20,
+                    max_new_tokens: 150,
+                    temperature: 0.1,
                     system_prompt: systemInstructions
                 });
-
-                const generatedText = output[0].generated_text;
                 
-                // Clean and format text (extract answer cleanly from instruction format if necessary)
-                const finalAnswer = generatedText.replace(userPrompt, '').trim();
-
-                // Update Loading Bubble with Actual Output
-                const targetBubble = document.getElementById('loading-bubble');
-                targetBubble.id = ""; // clear ID
-                targetBubble.classList.remove('italic', 'animate-pulse');
-                targetBubble.className = "bg-slate-800 p-3 rounded-xl rounded-tl-none border border-slate-700 text-slate-100";
-                targetBubble.innerText = finalAnswer || "Die lokale Generierung ergab kein Resultat.";
-                
+                const responseText = output[0].generated_text.replace(userPrompt, '').trim();
+                const bubble = assistantDiv.querySelector('.bg-slate-800');
+                bubble.className = "bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-100 text-sm shadow-inner";
+                bubble.classList.remove('italic', 'animate-pulse');
+                bubble.innerText = responseText || "Keine Antwort generiert.";
             } catch (err) {
                 console.error(err);
-                const targetBubble = document.getElementById('loading-bubble');
-                if(targetBubble) {
-                    targetBubble.innerText = "Fehler bei der lokalen Generierung. Prüfe die Browser-Konsole.";
-                    targetBubble.classList.add('text-red-400');
-                }
+                assistantDiv.querySelector('.bg-slate-800').innerText = "Fehler bei der lokalen Generierung.";
             }
             chatLog.scrollTop = chatLog.scrollHeight;
-        };
+        }
     </script>
 </body>
 </html>

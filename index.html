@@ -19,9 +19,9 @@
             <div>
                 <div class="flex items-center space-x-2">
                     <h1 class="text-xl font-bold tracking-tight">Local WebGPU Knowledge Hub</h1>
-                    <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">v1.2.0</span>
+                    <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">v1.3.0</span>
                 </div>
-                <p class="text-xs text-slate-400">100% Souverän • Optimiert für CPU-WASM Stabilität</p>
+                <p class="text-xs text-slate-400">100% Autark • Modell wird direkt aus dem eigenen Repository geladen</p>
             </div>
         </div>
         <div id="model-status" class="flex items-center space-x-2 text-sm bg-slate-800 px-3 py-1.5 rounded-md border border-slate-700">
@@ -54,7 +54,7 @@
             </div>
             <div id="chat-log" class="flex-1 p-4 overflow-y-auto space-y-4 text-sm">
                 <div class="bg-slate-800 p-3 rounded-xl max-w-[85%]">
-                    System bereit (v1.2.0). SmolLM2 CPU-optimiertes Modell wird geladen...
+                    System bereit (v1.3.0). Lade autarkes In-Repo Modell via CPU-WASM...
                 </div>
             </div>
             <div class="p-4 bg-slate-950 border-t border-slate-800 flex space-x-2">
@@ -66,7 +66,12 @@
 
     <script type="module">
         import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0';
-        env.allowLocalModels = false;
+        
+        // ZWINGEND: Blockiert jegliche externen Verbindungen zu Hugging Face
+        env.allowLocalModels = true; 
+        env.remoteModels = false;
+        // Setzt den relativen Pfad auf deinen Repository-Ordner
+        env.localModelPath = './'; 
 
         let links = [];
         let activeContextIndex = null;
@@ -84,39 +89,26 @@
         async function initLLM() {
             const statusDot = document.getElementById('status-dot');
             const statusText = document.getElementById('status-text');
-            
-            // Wechsel auf SmolLM2 (135M Parameter, extrem stabil und schnell auf CPUs via WASM)
-            const modelPath = 'onnx-community/SmolLM2-135M-Instruct-openvino-int4';
 
             try {
-                statusText.innerText = 'Prüfe WebGPU...';
-                generatorPipeline = await pipeline('text-generation', modelPath, {
-                    device: 'webgpu',
+                statusText.innerText = 'Lade Repo-Modell...';
+                
+                // Lädt die Dateien direkt aus deinem /model/ Ordner im Repository
+                generatorPipeline = await pipeline('text-generation', 'model', {
+                    device: 'wasm',
+                    model_file: 'model_quantized.onnx',
                     progress_callback: (data) => {
-                        if (data.status === 'progress') statusText.innerText = `Lade (GPU): ${Math.round(data.progress)}%`;
+                        if (data.status === 'progress') statusText.innerText = `Lade: ${Math.round(data.progress)}%`;
                     }
                 });
-                statusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
-                statusText.innerText = 'Bereit (WebGPU)';
+
+                statusDot.className = "w-2 h-2 rounded-full bg-blue-500";
+                statusText.innerText = 'Bereit (Autark CPU)';
                 unlockUI();
             } catch (err) {
-                console.log("Wechsle auf stabilen CPU-WASM Modus...");
-                statusText.innerText = 'Lade CPU-Modell...';
-                try {
-                    generatorPipeline = await pipeline('text-generation', 'onnx-community/SmolLM2-135M-Instruct', {
-                        device: 'wasm',
-                        progress_callback: (data) => {
-                            if (data.status === 'progress') statusText.innerText = `Lade (CPU): ${Math.round(data.progress)}%`;
-                        }
-                    });
-                    statusDot.className = "w-2 h-2 rounded-full bg-blue-500";
-                    statusText.innerText = 'Bereit (CPU Mode)';
-                    unlockUI();
-                } catch(cpuErr) {
-                    console.error(cpuErr);
-                    statusDot.className = "w-2 h-2 rounded-full bg-red-500";
-                    statusText.innerText = 'Ladefehler';
-                }
+                console.error(err);
+                statusDot.className = "w-2 h-2 rounded-full bg-red-500";
+                statusText.innerText = 'Modellordner fehlt im Repo';
             }
         }
 
@@ -177,17 +169,16 @@
 
             const aDiv = document.createElement('div');
             aDiv.className = "bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-300 italic animate-pulse text-sm max-w-[85%]";
-            aDiv.innerText = "Generiere Antwort offline...";
+            aDiv.innerText = "Generiere Antwort...";
             log.appendChild(aDiv);
             log.scrollTop = log.scrollHeight;
 
             let ctx = activeContextIndex !== null ? links[activeContextIndex].content : links.map(l => l.content).join("\n\n");
-            if (!ctx.trim()) ctx = "Kein relevanter Text-Inhalt hinterlegt.";
+            if (!ctx.trim()) ctx = "Kein Kontext vorhanden.";
 
             try {
-                // Modifiziertes Chat-Template spezifisch für SmolLM2-Instruct
                 const messages = [
-                    { role: 'system', content: `Du bist ein präziser IT-Assistent. Beantworte die Frage kurz und sachlich auf Deutsch basierend auf dem Kontext.\n\nKontext:\n${ctx}` },
+                    { role: 'system', content: `Du bist ein präziser IT-Assistent. Beantworte die Frage kurz auf Deutsch basierend auf dem Kontext.\n\nKontext:\n${ctx}` },
                     { role: 'user', content: val }
                 ];
 
@@ -200,10 +191,10 @@
                 const answer = out[0].generated_text[out[0].generated_text.length - 1].content.trim();
                 
                 aDiv.className = "bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-100 text-sm max-w-[85%]";
-                aDiv.innerText = answer || "Keine direkte Antwort im Kontext gefunden.";
+                aDiv.innerText = answer || "Keine Antwort im Kontext gefunden.";
             } catch (err) {
                 console.error(err);
-                aDiv.innerText = "Fehler bei der Inferenz auf diesem Gerät.";
+                aDiv.innerText = "Inferenz-Fehler.";
             }
             log.scrollTop = log.scrollHeight;
         }

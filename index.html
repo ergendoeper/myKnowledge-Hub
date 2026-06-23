@@ -17,7 +17,10 @@
         <div class="flex items-center space-x-3">
             <div class="bg-teal-500 p-2 rounded-lg text-slate-950 font-bold text-xl">Ω</div>
             <div>
-                <h1 class="text-xl font-bold tracking-tight">Local WebGPU Knowledge Hub</h1>
+                <div class="flex items-center space-x-2">
+                    <h1 class="text-xl font-bold tracking-tight">Local WebGPU Knowledge Hub</h1>
+                    <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">v1.1.0</span>
+                </div>
                 <p class="text-xs text-slate-400">100% Souverän • Daten verbleiben im Browser-Cache dieses Laptops</p>
             </div>
         </div>
@@ -108,6 +111,7 @@
                     statusText.innerText = 'Bereit (CPU Mode)';
                     unlockUI();
                 } catch(cpuErr) {
+                    console.error(cpuErr);
                     statusDot.className = "w-2 h-2 rounded-full bg-red-500";
                     statusText.innerText = 'Ladefehler';
                 }
@@ -179,7 +183,6 @@
             if (!ctx.trim()) ctx = "Kein relevanter Text-Inhalt hinterlegt.";
 
             try {
-                // Strukturierung des vorschriftsmäßigen Qwen Chat-Templates
                 const messages = [
                     { role: 'system', content: `Du bist ein präziser IT-Assistent. Beantworte die Fragen auf Deutsch, sachlich und ausschliesslich basierend auf dem bereitgestellten Kontext. Nutze keine externen Fakten.\n\nKontext:\n${ctx}` },
                     { role: 'user', content: val }
@@ -187,12 +190,11 @@
 
                 const out = await generatorPipeline(messages, {
                     max_new_tokens: 160,
-                    temperature: 0.1,         // Minimiert Halluzinationen dramatisch
+                    temperature: 0.1,
                     top_k: 20,
-                    repetition_penalty: 1.15   // Verhindert Textschleifen auf der CPU
+                    repetition_penalty: 1.15
                 });
                 
-                // Saubere Extraktion des Assistenten-Textes aus dem Modell-Output
                 const answer = out[0].generated_text[out[0].generated_text.length - 1].content.trim();
                 
                 aDiv.className = "bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-100 text-sm max-w-[85%]";

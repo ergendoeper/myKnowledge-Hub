@@ -15,16 +15,18 @@ jobs:
           mkdir -p model-smollm2
 
       - name: Download Qwen1.5 (Ultra-Light)
-        run: |
-          curl -L "https://huggingface.co/onnx-community/Qwen1.5-0.5B-Chat/resolve/main/tokenizer.json" -o model-qwen15/tokenizer.json
-          curl -L "https://huggingface.co/onnx-community/Qwen1.5-0.5B-Chat/resolve/main/tokenizer_config.json" -o model-qwen15/tokenizer_config.json
-          curl -L "https://huggingface.co/onnx-community/Qwen1.5-0.5B-Chat/resolve/main/onnx/model_quantized.onnx" -o model-qwen15/model_quantized.onnx
-
+              run: |
+                curl -L "https://huggingface.co/onnx-community/Qwen1.5-0.5B-Chat/resolve/main/tokenizer.json" -o model-qwen15/tokenizer.json
+                curl -L "https://huggingface.co/onnx-community/Qwen1.5-0.5B-Chat/resolve/main/tokenizer_config.json" -o model-qwen15/tokenizer_config.json
+                curl -L "https://huggingface.co/onnx-community/Qwen1.5-0.5B-Chat/resolve/main/config.json" -o model-qwen15/config.json
+                curl -L "https://huggingface.co/onnx-community/Qwen1.5-0.5B-Chat/resolve/main/onnx/model_quantized.onnx" -o model-qwen15/model_quantized.onnx
+      
       - name: Download SmolLM2
-        run: |
-          curl -L "https://huggingface.co/onnx-community/SmolLM2-135M-Instruct/resolve/main/tokenizer.json" -o model-smollm2/tokenizer.json
-          curl -L "https://huggingface.co/onnx-community/SmolLM2-135M-Instruct/resolve/main/tokenizer_config.json" -o model-smollm2/tokenizer_config.json
-          curl -L "https://huggingface.co/onnx-community/SmolLM2-135M-Instruct/resolve/main/onnx/model_quantized.onnx" -o model-smollm2/model_quantized.onnx
+              run: |
+                curl -L "https://huggingface.co/onnx-community/SmolLM2-135M-Instruct/resolve/main/tokenizer.json" -o model-smollm2/tokenizer.json
+                curl -L "https://huggingface.co/onnx-community/SmolLM2-135M-Instruct/resolve/main/tokenizer_config.json" -o model-smollm2/tokenizer_config.json
+                curl -L "https://huggingface.co/onnx-community/SmolLM2-135M-Instruct/resolve/main/config.json" -o model-smollm2/config.json
+                curl -L "https://huggingface.co/onnx-community/SmolLM2-135M-Instruct/resolve/main/onnx/model_quantized.onnx" -o model-smollm2/model_quantized.onnx
 
       - name: Commit and Push Model Files
         run: |

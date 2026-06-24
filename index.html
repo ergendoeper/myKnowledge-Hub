@@ -19,14 +19,24 @@
             <div>
                 <div class="flex items-center space-x-2">
                     <h1 class="text-xl font-bold tracking-tight">Local WebGPU Knowledge Hub</h1>
-                    <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">v1.3.0</span>
+                    <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">v1.5.0</span>
                 </div>
-                <p class="text-xs text-slate-400">100% Autark • Modell wird direkt aus dem eigenen Repository geladen</p>
+                <p class="text-xs text-slate-400">100% Autark • Flexibler Wechsel zwischen In-Repo Modellen</p>
             </div>
         </div>
-        <div id="model-status" class="flex items-center space-x-2 text-sm bg-slate-800 px-3 py-1.5 rounded-md border border-slate-700">
-            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse" id="status-dot"></span>
-            <span id="status-text" class="text-slate-300 text-xs">Initialisiere App...</span>
+        
+        <div class="flex items-center space-x-3">
+            <div class="flex flex-col">
+                <label class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">Aktives KI-Modell</label>
+                <select id="model-selector" class="bg-slate-800 text-slate-200 border border-slate-700 rounded px-2 py-1 text-xs focus:outline-none focus:border-teal-500">
+                    <option value="model-qwen15">Qwen 1.5 (12MB - Ultra-Light)</option>
+                    <option value="model-smollm2">SmolLM2 (45MB - Fast RAG)</option>
+                </select>
+            </div>
+            <div id="model-status" class="flex items-center space-x-2 text-sm bg-slate-800 px-3 py-3.5 rounded-md border border-slate-700 h-[38px] mt-4">
+                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse" id="status-dot"></span>
+                <span id="status-text" class="text-slate-300 text-xs">Initialisiere App...</span>
+            </div>
         </div>
     </header>
 
@@ -53,8 +63,8 @@
                 Kontext: <span id="active-context-title" class="text-teal-400 font-bold">Gesamte Wissensdatenbank</span>
             </div>
             <div id="chat-log" class="flex-1 p-4 overflow-y-auto space-y-4 text-sm">
-                <div class="bg-slate-800 p-3 rounded-xl max-w-[85%]">
-                    System bereit (v1.3.0). Lade autarkes In-Repo Modell via CPU-WASM...
+                <div class="bg-slate-800 p-3 rounded-xl max-w-[85%]" id="system-welcome-msg">
+                    System bereit (v1.5.0). Bereite Modell-Initialisierung vor...
                 </div>
             </div>
             <div class="p-4 bg-slate-950 border-t border-slate-800 flex space-x-2">
@@ -67,10 +77,8 @@
     <script type="module">
         import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0';
         
-        // ZWINGEND: Blockiert jegliche externen Verbindungen zu Hugging Face
         env.allowLocalModels = true; 
         env.remoteModels = false;
-        // Setzt den relativen Pfad auf deinen Repository-Ordner
         env.localModelPath = './'; 
 
         let links = [];
@@ -81,41 +89,75 @@
         document.getElementById('search-input').addEventListener('input', renderLinks);
         document.getElementById('send-btn').addEventListener('click', sendChatMessage);
         document.getElementById('chat-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(); });
+        
+        // Listener für den Modell-Wechsel
+        document.getElementById('model-selector').addEventListener('change', (e) => {
+            initLLM(e.target.value);
+        });
 
         loadLinksFromStorage();
         renderLinks();
-        initLLM();
+        
+        // Initialer Start mit dem voreingestellten Modell des Selectors
+        initLLM(document.getElementById('model-selector').value);
 
-        async function initLLM() {
+        async function initLLM(modelFolder) {
             const statusDot = document.getElementById('status-dot');
             const statusText = document.getElementById('status-text');
+            const chatInput = document.getElementById('chat-input');
+            const sendBtn = document.getElementById('send-btn');
+            const welcomeMsg = document.getElementById('system-welcome-msg');
+
+            // UI sperren während des Umschaltens
+            chatInput.setAttribute('disabled', 'true');
+            sendBtn.setAttribute('disabled', 'true');
+            chatInput.placeholder = "Modell wird geladen und initialisiert...";
+            statusDot.className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
+            
+            const log = document.getElementById('chat-log');
+            const noticeDiv = document.createElement('div');
+            noticeDiv.className = "bg-slate-950 text-amber-400 p-2 rounded text-xs italic border border-amber-900/40 my-2";
+            noticeDiv.innerText = `🔄 Wechsel zu Ordner: ./${modelFolder}/ ...`;
+            log.appendChild(noticeDiv);
+            log.scrollTop = log.scrollHeight;
 
             try {
-                statusText.innerText = 'Lade Repo-Modell...';
+                statusText.innerText = `Lade ${modelFolder}...`;
                 
-                // Lädt die Dateien direkt aus deinem /model/ Ordner im Repository
-                generatorPipeline = await pipeline('text-generation', 'model', {
+                // Nutzt den dynamisch übergebenen Ordnernamen als Modellpfad
+                generatorPipeline = await pipeline('text-generation', modelFolder, {
                     device: 'wasm',
                     model_file: 'model_quantized.onnx',
                     progress_callback: (data) => {
-                        if (data.status === 'progress') statusText.innerText = `Lade: ${Math.round(data.progress)}%`;
+                        if (data.status === 'progress') statusText.innerText = `${Math.round(data.progress)}%`;
                     }
                 });
 
                 statusDot.className = "w-2 h-2 rounded-full bg-blue-500";
-                statusText.innerText = 'Bereit (Autark CPU)';
-                unlockUI();
+                statusText.innerText = 'Bereit (CPU)';
+                
+                chatInput.removeAttribute('disabled');
+                sendBtn.removeAttribute('disabled');
+                chatInput.placeholder = "Frag mich etwas über deine Dokumente...";
+                
+                const readyDiv = document.createElement('div');
+                readyDiv.className = "bg-slate-950 text-emerald-400 p-2 rounded text-xs italic border border-emerald-900/40 my-2";
+                readyDiv.innerText = `✅ Modell ./${modelFolder}/ erfolgreich im CPU-Memory verankert.`;
+                log.appendChild(readyDiv);
+                log.scrollTop = log.scrollHeight;
+
             } catch (err) {
                 console.error(err);
                 statusDot.className = "w-2 h-2 rounded-full bg-red-500";
-                statusText.innerText = 'Modellordner fehlt im Repo';
+                statusText.innerText = 'Ladefehler';
+                chatInput.placeholder = "Fehler beim Laden. Ordnerstruktur prüfen.";
+                
+                const errDiv = document.createElement('div');
+                errDiv.className = "bg-slate-950 text-red-400 p-2 rounded text-xs border border-red-900/40 my-2";
+                errDiv.innerText = `❌ Fehler: Der Ordner ./${modelFolder}/ wurde im Repository nicht gefunden oder enthält unvollständige Dateien.`;
+                log.appendChild(errDiv);
+                log.scrollTop = log.scrollHeight;
             }
-        }
-
-        function unlockUI() {
-            document.getElementById('chat-input').removeAttribute('disabled');
-            document.getElementById('send-btn').removeAttribute('disabled');
-            document.getElementById('chat-input').placeholder = "Frag mich etwas über deine Dokumente...";
         }
 
         function loadLinksFromStorage() {

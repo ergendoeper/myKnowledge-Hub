@@ -19,9 +19,9 @@
             <div>
                 <div class="flex items-center space-x-2">
                     <h1 class="text-xl font-bold tracking-tight">Local WebGPU Knowledge Hub</h1>
-                    <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">v1.5.0</span>
+                    <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">v1.6.0</span>
                 </div>
-                <p class="text-xs text-slate-400">100% Autark • Flexibler Wechsel zwischen In-Repo Modellen</p>
+                <p class="text-xs text-slate-400">100% Autark • Pfad-Stabilität erzwungen</p>
             </div>
         </div>
         
@@ -64,7 +64,7 @@
             </div>
             <div id="chat-log" class="flex-1 p-4 overflow-y-auto space-y-4 text-sm">
                 <div class="bg-slate-800 p-3 rounded-xl max-w-[85%]" id="system-welcome-msg">
-                    System bereit (v1.5.0). Bereite Modell-Initialisierung vor...
+                    System bereit (v1.6.0). Bereite Modell-Initialisierung vor...
                 </div>
             </div>
             <div class="p-4 bg-slate-950 border-t border-slate-800 flex space-x-2">
@@ -90,15 +90,12 @@
         document.getElementById('send-btn').addEventListener('click', sendChatMessage);
         document.getElementById('chat-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(); });
         
-        // Listener für den Modell-Wechsel
         document.getElementById('model-selector').addEventListener('change', (e) => {
             initLLM(e.target.value);
         });
 
         loadLinksFromStorage();
         renderLinks();
-        
-        // Initialer Start mit dem voreingestellten Modell des Selectors
         initLLM(document.getElementById('model-selector').value);
 
         async function initLLM(modelFolder) {
@@ -106,28 +103,27 @@
             const statusText = document.getElementById('status-text');
             const chatInput = document.getElementById('chat-input');
             const sendBtn = document.getElementById('send-btn');
-            const welcomeMsg = document.getElementById('system-welcome-msg');
 
-            // UI sperren während des Umschaltens
             chatInput.setAttribute('disabled', 'true');
             sendBtn.setAttribute('disabled', 'true');
-            chatInput.placeholder = "Modell wird geladen und initialisiert...";
+            chatInput.placeholder = "Modell wird geladen...";
             statusDot.className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
             
             const log = document.getElementById('chat-log');
             const noticeDiv = document.createElement('div');
             noticeDiv.className = "bg-slate-950 text-amber-400 p-2 rounded text-xs italic border border-amber-900/40 my-2";
-            noticeDiv.innerText = `🔄 Wechsel zu Ordner: ./${modelFolder}/ ...`;
+            noticeDiv.innerText = `🔄 Versuche autarken Zugriff auf: ./${modelFolder}/ ...`;
             log.appendChild(noticeDiv);
             log.scrollTop = log.scrollHeight;
 
             try {
-                statusText.innerText = `Lade ${modelFolder}...`;
+                statusText.innerText = `Prüfe...`;
                 
-                // Nutzt den dynamisch übergebenen Ordnernamen als Modellpfad
+                // VZW: Wir zwingen Transformers.js, die Modelldatei direkt flach aus dem Ordner zu lesen,
+                // ohne nach Unterordnern wie 'onnx/' zu suchen.
                 generatorPipeline = await pipeline('text-generation', modelFolder, {
                     device: 'wasm',
-                    model_file: 'model_quantized.onnx',
+                    model_file: 'model_quantized.onnx', 
                     progress_callback: (data) => {
                         if (data.status === 'progress') statusText.innerText = `${Math.round(data.progress)}%`;
                     }
@@ -141,8 +137,8 @@
                 chatInput.placeholder = "Frag mich etwas über deine Dokumente...";
                 
                 const readyDiv = document.createElement('div');
-                readyDiv.className = "bg-slate-950 text-emerald-400 p-2 rounded text-xs italic border border-emerald-900/40 my-2";
-                readyDiv.innerText = `✅ Modell ./${modelFolder}/ erfolgreich im CPU-Memory verankert.`;
+                readyDiv.className = "bg-slate-800 p-3 rounded-xl text-slate-100 border border-slate-700 mt-2";
+                readyDiv.innerHTML = `<b>AI:</b> Modell <code>${modelFolder}</code> ist jetzt vollkommen offline einsatzbereit auf deiner CPU!`;
                 log.appendChild(readyDiv);
                 log.scrollTop = log.scrollHeight;
 
@@ -150,11 +146,15 @@
                 console.error(err);
                 statusDot.className = "w-2 h-2 rounded-full bg-red-500";
                 statusText.innerText = 'Ladefehler';
-                chatInput.placeholder = "Fehler beim Laden. Ordnerstruktur prüfen.";
+                chatInput.placeholder = "Fehler beim Laden.";
                 
                 const errDiv = document.createElement('div');
-                errDiv.className = "bg-slate-950 text-red-400 p-2 rounded text-xs border border-red-900/40 my-2";
-                errDiv.innerText = `❌ Fehler: Der Ordner ./${modelFolder}/ wurde im Repository nicht gefunden oder enthält unvollständige Dateien.`;
+                errDiv.className = "bg-slate-950 text-red-400 p-3 rounded text-xs border border-red-900/40 my-2";
+                errDiv.innerHTML = `<b>❌ Fehler beim Laden von ./${modelFolder}/</b><br>
+                Mögliche Gründe:<br>
+                1. GitHub Pages führt im Hintergrund noch den Klon-Prozess aus (Dauer: ca. 1-2 Min).<br>
+                2. Der Browser hält noch ein altes Abbild im Cache.<br><br>
+                <i>Tipp: Warte kurz und lade die Seite mit <b>Strg + F5</b> oder mit einem Zusatz in der Adresszeile (z.B. <code>?v=6</code>) neu.</i>`;
                 log.appendChild(errDiv);
                 log.scrollTop = log.scrollHeight;
             }
@@ -219,10 +219,21 @@
             if (!ctx.trim()) ctx = "Kein Kontext vorhanden.";
 
             try {
-                const messages = [
-                    { role: 'system', content: `Du bist ein präziser IT-Assistent. Beantworte die Frage kurz auf Deutsch basierend auf dem Kontext.\n\nKontext:\n${ctx}` },
-                    { role: 'user', content: val }
-                ];
+                const currentModel = document.getElementById('model-selector').value;
+                let messages = [];
+                
+                if (currentModel === 'model-smollm2') {
+                    messages = [
+                        { role: 'system', content: `Du bist ein präziser IT-Assistent. Beantworte die Frage kurz auf Deutsch basierend auf dem Kontext.\n\nKontext:\n${ctx}` },
+                        { role: 'user', content: val }
+                    ];
+                } else {
+                    // Qwen 1.5 Format
+                    messages = [
+                        { role: 'system', content: `Du bist ein präziser IT-Assistent. Beantworte die Frage kurz auf Deutsch basierend auf dem Kontext.\n\nKontext:\n${ctx}` },
+                        { role: 'user', content: val }
+                    ];
+                }
 
                 const out = await generatorPipeline(messages, {
                     max_new_tokens: 90,

@@ -12,63 +12,59 @@
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
-
     <header class="bg-slate-900 text-white px-6 py-4 shadow-md flex items-center justify-between shrink-0">
         <div class="flex items-center space-x-3">
             <div class="bg-teal-500 p-2 rounded-lg text-slate-950 font-bold text-xl">Ω</div>
             <div>
-                <div class="flex items-center space-x-2">
-                    <h1 class="text-xl font-bold tracking-tight">Local WebGPU Knowledge Hub</h1>
-                    <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">v1.8.0</span>
-                </div>
+                <h1 class="text-xl font-bold tracking-tight">Local WebGPU Knowledge Hub</h1>
                 <p class="text-xs text-slate-400">100% Autark • Smart-Path-Routing aktiv</p>
             </div>
         </div>
-        
+       
         <div class="flex items-center space-x-3">
             <div class="flex flex-col">
                 <label class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">Aktives KI-Modell</label>
-                <select id="model-selector" class="bg-slate-800 text-slate-200 border border-slate-700 rounded px-2 py-1 text-xs focus:outline-none focus:border-teal-500">
+                <select id="model-selector" class="bg-slate-800 text-slate-200 border border-slate-700 rounded px-2 py-1 text-xs">
                     <option value="model-qwen15">Qwen 1.5 (12MB - Ultra-Light)</option>
                     <option value="model-smollm2">SmolLM2 (45MB - Fast RAG)</option>
                 </select>
             </div>
-            <div id="model-status" class="flex items-center space-x-2 text-sm bg-slate-800 px-3 py-3.5 rounded-md border border-slate-700 h-[38px] mt-4">
+            <div id="model-status" class="flex items-center space-x-2 text-sm bg-slate-800 px-3 py-3.5 rounded-md border border-slate-700 h-[38px]">
                 <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse" id="status-dot"></span>
-                <span id="status-text" class="text-slate-300 text-xs">Initialisiere App...</span>
+                <span id="status-text" class="text-slate-300 text-xs">Initialisiere...</span>
             </div>
         </div>
     </header>
 
     <div class="flex-1 flex overflow-hidden w-full">
+        <!-- Linke Seite: Dokumente -->
         <div class="w-5/12 border-r border-slate-200 flex flex-col bg-white overflow-y-auto p-4 space-y-6">
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <h2 class="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-3">➕ Dokument / Link erfassen</h2>
                 <div class="space-y-3">
                     <input type="text" id="link-title" placeholder="Titel (z.B. Jira Ticket)" class="w-full text-sm px-3 py-2 border rounded-md">
-                    <input type="text" id="link-url" placeholder="Original-Link (https://...)" class="w-full text-sm px-3 py-2 border rounded-md">
+                    <input type="text" id="link-url" placeholder="Original-Link[](https://...)" class="w-full text-sm px-3 py-2 border rounded-md">
                     <textarea id="link-content" rows="4" placeholder="Text hier hineinkopieren..." class="w-full text-sm px-3 py-2 border rounded-md font-mono text-xs"></textarea>
                     <button id="btn-add" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-medium text-sm py-2 rounded-md">Speichern</button>
                 </div>
             </div>
-
+            
             <div class="space-y-3 flex-1 flex flex-col min-h-0">
                 <input type="text" id="search-input" placeholder="Durchsuchen..." class="w-full text-sm px-3 py-2 border rounded-lg bg-slate-50">
                 <div id="links-container" class="space-y-2 flex-1 overflow-y-auto"></div>
             </div>
         </div>
 
+        <!-- Rechte Seite: Chat -->
         <div class="w-7/12 flex flex-col bg-slate-900 text-slate-100 overflow-hidden">
             <div class="bg-slate-950 p-3 border-b border-slate-800 text-xs">
                 Kontext: <span id="active-context-title" class="text-teal-400 font-bold">Gesamte Wissensdatenbank</span>
             </div>
-            <div id="chat-log" class="flex-1 p-4 overflow-y-auto space-y-4 text-sm">
-                <div class="bg-slate-800 p-3 rounded-xl max-w-[85%]" id="system-welcome-msg">
-                    System bereit (v1.8.0). Bereite hybride Pfad-Initialisierung vor...
-                </div>
-            </div>
+            <div id="chat-log" class="flex-1 p-4 overflow-y-auto space-y-4 text-sm"></div>
+            
             <div class="p-4 bg-slate-950 border-t border-slate-800 flex space-x-2">
-                <input type="text" id="chat-input" placeholder="Modell lädt..." class="flex-1 bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500" disabled>
+                <input type="text" id="chat-input" placeholder="Modell muss zuerst geladen werden..." 
+                       class="flex-1 bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500" disabled>
                 <button id="send-btn" class="bg-teal-600 text-slate-950 font-semibold px-4 rounded-lg text-sm" disabled>Senden</button>
             </div>
         </div>
@@ -76,22 +72,20 @@
 
     <script type="module">
         import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0';
-        
-        env.allowLocalModels = true; 
+       
+        env.allowLocalModels = true;
         env.remoteModels = false;
 
         let links = [];
         let activeContextIndex = null;
         let generatorPipeline = null;
 
+        // Event Listener
         document.getElementById('btn-add').addEventListener('click', addLink);
         document.getElementById('search-input').addEventListener('input', renderLinks);
         document.getElementById('send-btn').addEventListener('click', sendChatMessage);
         document.getElementById('chat-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(); });
-        
-        document.getElementById('model-selector').addEventListener('change', (e) => {
-            initLLM(e.target.value);
-        });
+        document.getElementById('model-selector').addEventListener('change', (e) => initLLM(e.target.value));
 
         loadLinksFromStorage();
         renderLinks();
@@ -103,65 +97,87 @@
             const chatInput = document.getElementById('chat-input');
             const sendBtn = document.getElementById('send-btn');
             const log = document.getElementById('chat-log');
-        
-            // Reset UI
+
             chatInput.disabled = true;
             sendBtn.disabled = true;
             statusDot.className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
-        
-            const manualUrl = localStorage.getItem('manualModelBase') || '';
-            const pathsToTry = manualUrl 
-                ? [manualUrl]
-                : [
-                    window.location.origin + window.location.pathname.replace(/[^/]+$/, ''),
-                    `https://raw.githubusercontent.com/ergendoeper/myKnowledge-Hub/main/`
-                  ];
-        
-            for (let base of pathsToTry) {
-                const modelPath = base.endsWith('/') ? base + modelFolder : base + '/' + modelFolder;
-                
-                const notice = document.createElement('div');
-                notice.className = "bg-slate-950 text-amber-400 p-2 rounded text-xs my-1";
-                notice.textContent = `Testing: ${modelPath}`;
-                log.appendChild(notice);
-                log.scrollTop = log.scrollHeight;
-        
+            statusText.textContent = "Lade Modell...";
+
+            // Manuelle Base-URL (falls vom User gesetzt)
+            let manualBase = localStorage.getItem('manualModelBase') || '';
+            const paths = manualBase ? [manualBase] : [
+                window.location.origin + window.location.pathname.replace(/[^/]*$/, ''),
+                `https://raw.githubusercontent.com/ergendoeper/myKnowledge-Hub/main/`
+            ];
+
+            for (let base of paths) {
+                const fullPath = base.endsWith('/') ? base + modelFolder : base + '/' + modelFolder;
+                addLog(`🔄 Teste Pfad: ${fullPath}`, "amber");
+
                 try {
                     env.localModelPath = base;
                     generatorPipeline = await pipeline('text-generation', modelFolder, {
                         device: 'wasm',
                         model_file: 'model_quantized.onnx',
-                        quantized: true,
                         progress_callback: (data) => {
-                            if (data.status === 'progress') {
-                                statusText.textContent = `Lade... ${Math.round(data.progress)}%`;
-                            }
+                            if (data.status === 'progress') statusText.textContent = `Lade... ${Math.round(data.progress)}%`;
                         }
                     });
-        
-                    // Success!
+
+                    // Erfolg
                     statusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
-                    statusText.textContent = 'Bereit (WebGPU/CPU)';
+                    statusText.textContent = "Bereit ✓";
                     chatInput.disabled = false;
                     sendBtn.disabled = false;
                     chatInput.placeholder = "Frag mich etwas über deine Dokumente...";
-        
-                    const successMsg = document.createElement('div');
-                    successMsg.className = "bg-emerald-950 border border-emerald-700 p-3 rounded-xl text-emerald-300 text-sm";
-                    successMsg.innerHTML = `✅ Modell geladen von <code class="text-xs">${modelPath}</code>`;
-                    log.appendChild(successMsg);
+                    addLog(`✅ Modell erfolgreich geladen von: ${fullPath}`, "emerald");
                     return;
+
                 } catch (err) {
-                    console.error(`Failed path ${modelPath}:`, err);
+                    console.error(err);
+                    addLog(`❌ Fehlgeschlagen: ${err.message || err}`, "red");
                 }
             }
-        
-            // All paths failed
+
+            // Alle Pfade fehlgeschlagen
             statusDot.className = "w-2 h-2 rounded-full bg-red-500";
-            statusText.textContent = 'Fehlgeschlagen';
-            showManualOverrideUI();
+            statusText.textContent = "Ladefehler";
+            addLog("Alle Modellpfade blockiert oder ungültig. Bitte Modelle korrekt hosten.", "red");
+            addManualBaseInput();
         }
 
+        function addLog(text, color = "slate") {
+            const log = document.getElementById('chat-log');
+            const div = document.createElement('div');
+            div.className = `p-3 rounded-xl text-sm ${color === 'emerald' ? 'bg-emerald-950 border border-emerald-700 text-emerald-300' : color === 'red' ? 'bg-red-950 border border-red-700 text-red-300' : 'bg-slate-800 text-slate-400'}`;
+            div.innerHTML = text;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function addManualBaseInput() {
+            const log = document.getElementById('chat-log');
+            const div = document.createElement('div');
+            div.className = "bg-slate-800 p-4 rounded-xl border border-slate-700 mt-3";
+            div.innerHTML = `
+                <p class="text-xs text-slate-400 mb-2">Manuelle Model-Base URL:</p>
+                <input id="manual-base" type="text" placeholder="https://dein-server.com/models/" 
+                       class="w-full bg-slate-900 border border-slate-600 text-white rounded px-3 py-2 text-sm">
+                <button onclick="saveManualBase()" class="mt-3 text-xs bg-teal-600 hover:bg-teal-700 px-4 py-2 rounded">Speichern & Neu laden</button>
+            `;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        window.saveManualBase = function() {
+            const val = document.getElementById('manual-base').value.trim();
+            if (val) {
+                localStorage.setItem('manualModelBase', val);
+                location.reload();
+            }
+        };
+
+        // Rest der Funktionen (addLink, renderLinks, sendChatMessage) bleiben gleich wie bisher
         function loadLinksFromStorage() {
             const stored = localStorage.getItem('local_knowledge_hub_links');
             if (stored) links = JSON.parse(stored);
@@ -172,29 +188,30 @@
             const u = document.getElementById('link-url');
             const c = document.getElementById('link-content');
             if (!t.value || !u.value) return;
-
             links.unshift({ title: t.value, url: u.value, content: c.value || '' });
             localStorage.setItem('local_knowledge_hub_links', JSON.stringify(links));
             renderLinks();
-            t.value = ''; u.value = ''; c.value = '';
+            t.value = u.value = c.value = '';
         }
 
         function renderLinks() {
             const container = document.getElementById('links-container');
             const search = document.getElementById('search-input').value.toLowerCase();
             container.innerHTML = '';
-
-            const filtered = links.filter(l => l.title.toLowerCase().includes(search) || l.content.toLowerCase().includes(search));
-            filtered.forEach((link) => {
-                const isSelected = links.indexOf(link) === activeContextIndex;
+            const filtered = links.filter(l => 
+                l.title.toLowerCase().includes(search) || 
+                (l.content && l.content.toLowerCase().includes(search))
+            );
+            filtered.forEach((link, idx) => {
+                const globalIdx = links.indexOf(link);
                 const card = document.createElement('div');
-                card.className = `p-3 rounded-lg border cursor-pointer ${isSelected ? 'bg-teal-50 border-teal-500 shadow-sm' : 'bg-slate-50 hover:bg-slate-100 border-slate-200'}`;
-                card.innerHTML = `<h4 class="text-sm font-bold text-slate-900 truncate">${link.title}</h4><p class="text-xs text-slate-500 truncate">🔗 ${link.url}</p>`;
-                card.addEventListener('click', () => {
-                    activeContextIndex = links.indexOf(link);
+                card.className = `p-3 rounded-lg border cursor-pointer ${globalIdx === activeContextIndex ? 'bg-teal-50 border-teal-500' : 'bg-slate-50 hover:bg-slate-100 border-slate-200'}`;
+                card.innerHTML = `<h4 class="text-sm font-bold truncate">${link.title}</h4><p class="text-xs text-slate-500 truncate">🔗 ${link.url}</p>`;
+                card.onclick = () => {
+                    activeContextIndex = globalIdx;
                     document.getElementById('active-context-title').innerText = link.title;
                     renderLinks();
-                });
+                };
                 container.appendChild(card);
             });
         }
@@ -206,39 +223,39 @@
             if (!val || !generatorPipeline) return;
 
             inp.value = '';
-            const uDiv = document.createElement('div');
-            uDiv.className = "bg-slate-700 p-3 rounded-xl max-w-[85%] ml-auto text-white text-sm";
-            uDiv.innerText = val;
-            log.appendChild(uDiv);
+            const userDiv = document.createElement('div');
+            userDiv.className = "bg-slate-700 p-3 rounded-xl max-w-[85%] ml-auto text-white";
+            userDiv.innerText = val;
+            log.appendChild(userDiv);
 
-            const aDiv = document.createElement('div');
-            aDiv.className = "bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-300 italic animate-pulse text-sm max-w-[85%]";
-            aDiv.innerText = "Generiere Antwort...";
-            log.appendChild(aDiv);
+            const aiDiv = document.createElement('div');
+            aiDiv.className = "bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-300 italic";
+            aiDiv.innerText = "Denke nach...";
+            log.appendChild(aiDiv);
             log.scrollTop = log.scrollHeight;
 
-            let ctx = activeContextIndex !== null ? links[activeContextIndex].content : links.map(l => l.content).join("\n\n");
-            if (!ctx.trim()) ctx = "Kein Kontext vorhanden.";
+            const ctx = activeContextIndex !== null 
+                ? links[activeContextIndex].content 
+                : links.map(l => l.content).join("\n\n");
 
             try {
                 const messages = [
-                    { role: 'system', content: `Du bist ein präziser IT-Assistent. Beantworte die Frage kurz auf Deutsch basierend auf dem Kontext.\n\nKontext:\n${ctx}` },
+                    { role: 'system', content: `Du bist ein präziser IT-Assistent. Antworte kurz und auf Deutsch. Kontext:\n${ctx || "Kein Kontext."}` },
                     { role: 'user', content: val }
                 ];
 
                 const out = await generatorPipeline(messages, {
-                    max_new_tokens: 90,
+                    max_new_tokens: 120,
                     temperature: 0.1,
-                    repetition_penalty: 1.2
+                    repetition_penalty: 1.15
                 });
-                
-                const answer = out[0].generated_text[out[0].generated_text.length - 1].content.trim();
-                
-                aDiv.className = "bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-100 text-sm max-w-[85%]";
-                aDiv.innerText = answer || "Keine Antwort im Kontext gefunden.";
+
+                const answer = out[0].generated_text.at(-1).content.trim();
+                aiDiv.className = "bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-100";
+                aiDiv.innerText = answer || "Keine passende Antwort gefunden.";
             } catch (err) {
                 console.error(err);
-                aDiv.innerText = "Inferenz-Fehler.";
+                aiDiv.innerText = "Fehler bei der Antwortgenerierung.";
             }
             log.scrollTop = log.scrollHeight;
         }

@@ -1,37 +1,36 @@
-name: Download Model Directly to Repo
+name: Download Models
 on:
-  workflow_dispatch: # Erlaubt es dir, den Download manuell per Klick zu starten
+  workflow_dispatch:
 
 jobs:
   download:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Create Model Folders
         run: |
-          mkdir -p model-qwen15
-          mkdir -p model-smollm2
+          mkdir -p model-qwen15/onnx
+          mkdir -p model-smollm2/onnx
 
-      - name: Download Qwen1.5 (Ultra-Light)
+      - name: Download Qwen1.5
         run: |
+          curl -L "https://huggingface.co/onnx-community/Qwen1.5-0.5B-Chat/resolve/main/config.json" -o model-qwen15/config.json
           curl -L "https://huggingface.co/onnx-community/Qwen1.5-0.5B-Chat/resolve/main/tokenizer.json" -o model-qwen15/tokenizer.json
           curl -L "https://huggingface.co/onnx-community/Qwen1.5-0.5B-Chat/resolve/main/tokenizer_config.json" -o model-qwen15/tokenizer_config.json
-          curl -L "https://huggingface.co/onnx-community/Qwen1.5-0.5B-Chat/resolve/main/config.json" -o model-qwen15/config.json
-          curl -L "https://huggingface.co/onnx-community/Qwen1.5-0.5B-Chat/resolve/main/onnx/model_quantized.onnx" -o model-qwen15/model_quantized.onnx
-      
+          curl -L "https://huggingface.co/onnx-community/Qwen1.5-0.5B-Chat/resolve/main/onnx/model_quantized.onnx" -o model-qwen15/onnx/model_quantized.onnx
+
       - name: Download SmolLM2
         run: |
+          curl -L "https://huggingface.co/onnx-community/SmolLM2-135M-Instruct/resolve/main/config.json" -o model-smollm2/config.json
           curl -L "https://huggingface.co/onnx-community/SmolLM2-135M-Instruct/resolve/main/tokenizer.json" -o model-smollm2/tokenizer.json
           curl -L "https://huggingface.co/onnx-community/SmolLM2-135M-Instruct/resolve/main/tokenizer_config.json" -o model-smollm2/tokenizer_config.json
-          curl -L "https://huggingface.co/onnx-community/SmolLM2-135M-Instruct/resolve/main/config.json" -o model-smollm2/config.json
-          curl -L "https://huggingface.co/onnx-community/SmolLM2-135M-Instruct/resolve/main/onnx/model_quantized.onnx" -o model-smollm2/model_quantized.onnx
+          curl -L "https://huggingface.co/onnx-community/SmolLM2-135M-Instruct/resolve/main/onnx/model_quantized.onnx" -o model-smollm2/onnx/model_quantized.onnx
 
-      - name: Commit and Push Model Files
+      - name: Commit & Push
         run: |
-          git config --global user.name "GitHub Action Bot"
-          git config --global user.email "action@github.com"
-          git add model-qwen15/ model-smollm2/
-          git commit -m "Autarkes Modell-Injektion via GitHub Actions"
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git add model-qwen15 model-smollm2
+          git commit -m "Update ONNX models" || echo "No changes"
           git push

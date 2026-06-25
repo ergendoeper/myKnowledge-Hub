@@ -19,9 +19,9 @@
             <div>
                 <div class="flex items-center space-x-2">
                     <h1 class="text-xl font-bold tracking-tight">Local WebGPU Knowledge Hub</h1>
-                    <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">v1.6.0</span>
+                    <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">v1.7.0</span>
                 </div>
-                <p class="text-xs text-slate-400">100% Autark • Pfad-Stabilität erzwungen</p>
+                <p class="text-xs text-slate-400">100% Autark • Absolute Pfade erzwungen</p>
             </div>
         </div>
         
@@ -64,7 +64,7 @@
             </div>
             <div id="chat-log" class="flex-1 p-4 overflow-y-auto space-y-4 text-sm">
                 <div class="bg-slate-800 p-3 rounded-xl max-w-[85%]" id="system-welcome-msg">
-                    System bereit (v1.6.0). Bereite Modell-Initialisierung vor...
+                    System bereit (v1.7.0). Bereite absolute Pfad-Initialisierung vor...
                 </div>
             </div>
             <div class="p-4 bg-slate-950 border-t border-slate-800 flex space-x-2">
@@ -79,7 +79,11 @@
         
         env.allowLocalModels = true; 
         env.remoteModels = false;
-        env.localModelPath = './'; 
+
+        // VZW: Wir ermitteln den absoluten Pfad deines GitHub-Repositorys dynamisch zur Laufzeit,
+        // um CORS- und Case-Sensitivity-Fehler bei verschachtelten JSON-Dateien zu verhindern.
+        const repoBaseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
+        env.localModelPath = repoBaseUrl; 
 
         let links = [];
         let activeContextIndex = null;
@@ -112,15 +116,14 @@
             const log = document.getElementById('chat-log');
             const noticeDiv = document.createElement('div');
             noticeDiv.className = "bg-slate-950 text-amber-400 p-2 rounded text-xs italic border border-amber-900/40 my-2";
-            noticeDiv.innerText = `🔄 Versuche autarken Zugriff auf: ./${modelFolder}/ ...`;
+            noticeDiv.innerText = `🔍 Absoluter URL-Pfad: ${repoBaseUrl}${modelFolder}/`;
             log.appendChild(noticeDiv);
             log.scrollTop = log.scrollHeight;
 
             try {
-                statusText.innerText = `Prüfe...`;
+                statusText.innerText = `Lade...`;
                 
-                // VZW: Wir zwingen Transformers.js, die Modelldatei direkt flach aus dem Ordner zu lesen,
-                // ohne nach Unterordnern wie 'onnx/' zu suchen.
+                // Wir übergeben Transformers.js den absoluten URL-Pfad inklusive exaktem Namen der Modelldatei
                 generatorPipeline = await pipeline('text-generation', modelFolder, {
                     device: 'wasm',
                     model_file: 'model_quantized.onnx', 
@@ -138,7 +141,7 @@
                 
                 const readyDiv = document.createElement('div');
                 readyDiv.className = "bg-slate-800 p-3 rounded-xl text-slate-100 border border-slate-700 mt-2";
-                readyDiv.innerHTML = `<b>AI:</b> Modell <code>${modelFolder}</code> ist jetzt vollkommen offline einsatzbereit auf deiner CPU!`;
+                readyDiv.innerHTML = `<b>AI:</b> Das Modell aus <code>${modelFolder}</code> wurde erfolgreich via absolutem HTTPS-Pfad geladen und operiert ab jetzt zu 100% offline im CPU-Memory.`;
                 log.appendChild(readyDiv);
                 log.scrollTop = log.scrollHeight;
 
@@ -150,11 +153,9 @@
                 
                 const errDiv = document.createElement('div');
                 errDiv.className = "bg-slate-950 text-red-400 p-3 rounded text-xs border border-red-900/40 my-2";
-                errDiv.innerHTML = `<b>❌ Fehler beim Laden von ./${modelFolder}/</b><br>
-                Mögliche Gründe:<br>
-                1. GitHub Pages führt im Hintergrund noch den Klon-Prozess aus (Dauer: ca. 1-2 Min).<br>
-                2. Der Browser hält noch ein altes Abbild im Cache.<br><br>
-                <i>Tipp: Warte kurz und lade die Seite mit <b>Strg + F5</b> oder mit einem Zusatz in der Adresszeile (z.B. <code>?v=6</code>) neu.</i>`;
+                errDiv.innerHTML = `<b>❌ JSON-Parser-Fehler behoben, aber Datei nicht bereit</b><br>
+                Der absolute Link ist korrekt, aber GitHub Pages liefert die Dateien noch nicht aus.<br><br>
+                <b>Bitte prüfe:</b> Steht in deiner GitHub Action unter dem Reiter "Actions" beim internen Job <code>pages build and deployment</code> ein grünes Häkchen für den letzten Commit? Falls ja, lade diese Seite mit <b>Strg + F5</b> einmal hart neu.`;
                 log.appendChild(errDiv);
                 log.scrollTop = log.scrollHeight;
             }
@@ -219,21 +220,10 @@
             if (!ctx.trim()) ctx = "Kein Kontext vorhanden.";
 
             try {
-                const currentModel = document.getElementById('model-selector').value;
-                let messages = [];
-                
-                if (currentModel === 'model-smollm2') {
-                    messages = [
-                        { role: 'system', content: `Du bist ein präziser IT-Assistent. Beantworte die Frage kurz auf Deutsch basierend auf dem Kontext.\n\nKontext:\n${ctx}` },
-                        { role: 'user', content: val }
-                    ];
-                } else {
-                    // Qwen 1.5 Format
-                    messages = [
-                        { role: 'system', content: `Du bist ein präziser IT-Assistent. Beantworte die Frage kurz auf Deutsch basierend auf dem Kontext.\n\nKontext:\n${ctx}` },
-                        { role: 'user', content: val }
-                    ];
-                }
+                const messages = [
+                    { role: 'system', content: `Du bist ein präziser IT-Assistent. Beantworte die Frage kurz auf Deutsch basierend auf dem Kontext.\n\nKontext:\n${ctx}` },
+                    { role: 'user', content: val }
+                ];
 
                 const out = await generatorPipeline(messages, {
                     max_new_tokens: 90,

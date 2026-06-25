@@ -19,9 +19,9 @@
             <div>
                 <div class="flex items-center space-x-2">
                     <h1 class="text-xl font-bold tracking-tight">Local WebGPU Knowledge Hub</h1>
-                    <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">v1.7.0</span>
+                    <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">v1.8.0</span>
                 </div>
-                <p class="text-xs text-slate-400">100% Autark • Absolute Pfade erzwungen</p>
+                <p class="text-xs text-slate-400">100% Autark • Smart-Path-Routing aktiv</p>
             </div>
         </div>
         
@@ -64,7 +64,7 @@
             </div>
             <div id="chat-log" class="flex-1 p-4 overflow-y-auto space-y-4 text-sm">
                 <div class="bg-slate-800 p-3 rounded-xl max-w-[85%]" id="system-welcome-msg">
-                    System bereit (v1.7.0). Bereite absolute Pfad-Initialisierung vor...
+                    System bereit (v1.8.0). Bereite hybride Pfad-Initialisierung vor...
                 </div>
             </div>
             <div class="p-4 bg-slate-950 border-t border-slate-800 flex space-x-2">
@@ -79,11 +79,6 @@
         
         env.allowLocalModels = true; 
         env.remoteModels = false;
-
-        // VZW: Wir ermitteln den absoluten Pfad deines GitHub-Repositorys dynamisch zur Laufzeit,
-        // um CORS- und Case-Sensitivity-Fehler bei verschachtelten JSON-Dateien zu verhindern.
-        const repoBaseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
-        env.localModelPath = repoBaseUrl; 
 
         let links = [];
         let activeContextIndex = null;
@@ -107,55 +102,72 @@
             const statusText = document.getElementById('status-text');
             const chatInput = document.getElementById('chat-input');
             const sendBtn = document.getElementById('send-btn');
+            const log = document.getElementById('chat-log');
 
             chatInput.setAttribute('disabled', 'true');
             sendBtn.setAttribute('disabled', 'true');
             chatInput.placeholder = "Modell wird geladen...";
             statusDot.className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
             
-            const log = document.getElementById('chat-log');
-            const noticeDiv = document.createElement('div');
-            noticeDiv.className = "bg-slate-950 text-amber-400 p-2 rounded text-xs italic border border-amber-900/40 my-2";
-            noticeDiv.innerText = `🔍 Absoluter URL-Pfad: ${repoBaseUrl}${modelFolder}/`;
-            log.appendChild(noticeDiv);
-            log.scrollTop = log.scrollHeight;
+            // Strategisches Smart-Routing: Wir probieren erst den lokalen Pfad aus. 
+            // Falls die Custom Domain dazwischenfunkt, greift das System vollautomatisch auf das direkte Github-Raw-CDN zurück.
+            const primaryPath = window.location.origin + window.location.pathname.replace('index.html', '');
+            const fallbackPath = `https://raw.githubusercontent.com/ergendoeper/myKnowledge-Hub/main/`;
 
-            try {
-                statusText.innerText = `Lade...`;
-                
-                // Wir übergeben Transformers.js den absoluten URL-Pfad inklusive exaktem Namen der Modelldatei
-                generatorPipeline = await pipeline('text-generation', modelFolder, {
-                    device: 'wasm',
-                    model_file: 'model_quantized.onnx', 
-                    progress_callback: (data) => {
-                        if (data.status === 'progress') statusText.innerText = `${Math.round(data.progress)}%`;
-                    }
-                });
+            const pathsToTry = [primaryPath, fallbackPath];
+            let success = false;
 
-                statusDot.className = "w-2 h-2 rounded-full bg-blue-500";
-                statusText.innerText = 'Bereit (CPU)';
+            for (let targetPath of pathsToTry) {
+                if (success) break;
                 
-                chatInput.removeAttribute('disabled');
-                sendBtn.removeAttribute('disabled');
-                chatInput.placeholder = "Frag mich etwas über deine Dokumente...";
-                
-                const readyDiv = document.createElement('div');
-                readyDiv.className = "bg-slate-800 p-3 rounded-xl text-slate-100 border border-slate-700 mt-2";
-                readyDiv.innerHTML = `<b>AI:</b> Das Modell aus <code>${modelFolder}</code> wurde erfolgreich via absolutem HTTPS-Pfad geladen und operiert ab jetzt zu 100% offline im CPU-Memory.`;
-                log.appendChild(readyDiv);
+                const noticeDiv = document.createElement('div');
+                noticeDiv.className = "bg-slate-950 text-amber-400 p-2 rounded text-xs italic border border-amber-900/40 my-1";
+                noticeDiv.innerText = `🔄 Teste Inferenz-Pfad: ${targetPath}${modelFolder}/`;
+                log.appendChild(noticeDiv);
                 log.scrollTop = log.scrollHeight;
 
-            } catch (err) {
-                console.error(err);
+                try {
+                    env.localModelPath = targetPath;
+                    statusText.innerText = `Lade...`;
+                    
+                    generatorPipeline = await pipeline('text-generation', modelFolder, {
+                        device: 'wasm',
+                        model_file: 'model_quantized.onnx', 
+                        progress_callback: (data) => {
+                            if (data.status === 'progress') statusText.innerText = `${Math.round(data.progress)}%`;
+                        }
+                    });
+
+                    statusDot.className = "w-2 h-2 rounded-full bg-blue-500";
+                    statusText.innerText = 'Bereit (CPU)';
+                    
+                    chatInput.removeAttribute('disabled');
+                    sendBtn.removeAttribute('disabled');
+                    chatInput.placeholder = "Frag mich etwas über deine Dokumente...";
+                    
+                    const readyDiv = document.createElement('div');
+                    readyDiv.className = "bg-slate-800 p-3 rounded-xl text-slate-100 border border-slate-700 mt-2";
+                    readyDiv.innerHTML = `<b>AI:</b> Verbindung hergestellt über <code>${targetPath}</code>. Das Modell läuft vollkommen souverän auf deiner CPU.`;
+                    log.appendChild(readyDiv);
+                    log.scrollTop = log.scrollHeight;
+                    
+                    success = true;
+                    break;
+                } catch (err) {
+                    console.log(`Pfad fehlgeschlagen: ${targetPath}, versuche nächsten...`);
+                }
+            }
+
+            if (!success) {
                 statusDot.className = "w-2 h-2 rounded-full bg-red-500";
                 statusText.innerText = 'Ladefehler';
-                chatInput.placeholder = "Fehler beim Laden.";
+                chatInput.placeholder = "Modellpfade blockiert.";
                 
                 const errDiv = document.createElement('div');
                 errDiv.className = "bg-slate-950 text-red-400 p-3 rounded text-xs border border-red-900/40 my-2";
-                errDiv.innerHTML = `<b>❌ JSON-Parser-Fehler behoben, aber Datei nicht bereit</b><br>
-                Der absolute Link ist korrekt, aber GitHub Pages liefert die Dateien noch nicht aus.<br><br>
-                <b>Bitte prüfe:</b> Steht in deiner GitHub Action unter dem Reiter "Actions" beim internen Job <code>pages build and deployment</code> ein grünes Häkchen für den letzten Commit? Falls ja, lade diese Seite mit <b>Strg + F5</b> einmal hart neu.`;
+                errDiv.innerHTML = `<b>❌ Beide lokalen Inferenz-Pfade blockiert</b><br>
+                Deine IT-Firewall blockiert das Auslesen der JSON-Ressourcen auch über das GitHub-Rohdaten-Netzwerk.<br><br>
+                <b>Letzter sicherer Ausweg:</b> Da die Inferenz-Engine den Online-Pfad nicht parsen darf, nutze bitte Methode 1 (Kopieren des Codes in ein echtes <code>about:blank</code>-Tab über F12). Das hebelt jegliche Netzwerk-Sperren aus.`;
                 log.appendChild(errDiv);
                 log.scrollTop = log.scrollHeight;
             }

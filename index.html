@@ -103,74 +103,63 @@
             const chatInput = document.getElementById('chat-input');
             const sendBtn = document.getElementById('send-btn');
             const log = document.getElementById('chat-log');
-
-            chatInput.setAttribute('disabled', 'true');
-            sendBtn.setAttribute('disabled', 'true');
-            chatInput.placeholder = "Modell wird geladen...";
+        
+            // Reset UI
+            chatInput.disabled = true;
+            sendBtn.disabled = true;
             statusDot.className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
-            
-            // Strategisches Smart-Routing: Wir probieren erst den lokalen Pfad aus. 
-            // Falls die Custom Domain dazwischenfunkt, greift das System vollautomatisch auf das direkte Github-Raw-CDN zurück.
-            const primaryPath = window.location.origin + window.location.pathname.replace('index.html', '');
-            const fallbackPath = `https://raw.githubusercontent.com/ergendoeper/myKnowledge-Hub/main/`;
-
-            const pathsToTry = [primaryPath, fallbackPath];
-            let success = false;
-
-            for (let targetPath of pathsToTry) {
-                if (success) break;
+        
+            const manualUrl = localStorage.getItem('manualModelBase') || '';
+            const pathsToTry = manualUrl 
+                ? [manualUrl]
+                : [
+                    window.location.origin + window.location.pathname.replace(/[^/]+$/, ''),
+                    `https://raw.githubusercontent.com/ergendoeper/myKnowledge-Hub/main/`
+                  ];
+        
+            for (let base of pathsToTry) {
+                const modelPath = base.endsWith('/') ? base + modelFolder : base + '/' + modelFolder;
                 
-                const noticeDiv = document.createElement('div');
-                noticeDiv.className = "bg-slate-950 text-amber-400 p-2 rounded text-xs italic border border-amber-900/40 my-1";
-                noticeDiv.innerText = `🔄 Teste Inferenz-Pfad: ${targetPath}${modelFolder}/`;
-                log.appendChild(noticeDiv);
+                const notice = document.createElement('div');
+                notice.className = "bg-slate-950 text-amber-400 p-2 rounded text-xs my-1";
+                notice.textContent = `Testing: ${modelPath}`;
+                log.appendChild(notice);
                 log.scrollTop = log.scrollHeight;
-
+        
                 try {
-                    env.localModelPath = targetPath;
-                    statusText.innerText = `Lade...`;
-                    
+                    env.localModelPath = base;
                     generatorPipeline = await pipeline('text-generation', modelFolder, {
                         device: 'wasm',
-                        model_file: 'model_quantized.onnx', 
+                        model_file: 'model_quantized.onnx',
+                        quantized: true,
                         progress_callback: (data) => {
-                            if (data.status === 'progress') statusText.innerText = `${Math.round(data.progress)}%`;
+                            if (data.status === 'progress') {
+                                statusText.textContent = `Lade... ${Math.round(data.progress)}%`;
+                            }
                         }
                     });
-
-                    statusDot.className = "w-2 h-2 rounded-full bg-blue-500";
-                    statusText.innerText = 'Bereit (CPU)';
-                    
-                    chatInput.removeAttribute('disabled');
-                    sendBtn.removeAttribute('disabled');
+        
+                    // Success!
+                    statusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
+                    statusText.textContent = 'Bereit (WebGPU/CPU)';
+                    chatInput.disabled = false;
+                    sendBtn.disabled = false;
                     chatInput.placeholder = "Frag mich etwas über deine Dokumente...";
-                    
-                    const readyDiv = document.createElement('div');
-                    readyDiv.className = "bg-slate-800 p-3 rounded-xl text-slate-100 border border-slate-700 mt-2";
-                    readyDiv.innerHTML = `<b>AI:</b> Verbindung hergestellt über <code>${targetPath}</code>. Das Modell läuft vollkommen souverän auf deiner CPU.`;
-                    log.appendChild(readyDiv);
-                    log.scrollTop = log.scrollHeight;
-                    
-                    success = true;
-                    break;
+        
+                    const successMsg = document.createElement('div');
+                    successMsg.className = "bg-emerald-950 border border-emerald-700 p-3 rounded-xl text-emerald-300 text-sm";
+                    successMsg.innerHTML = `✅ Modell geladen von <code class="text-xs">${modelPath}</code>`;
+                    log.appendChild(successMsg);
+                    return;
                 } catch (err) {
-                    console.log(`Pfad fehlgeschlagen: ${targetPath}, versuche nächsten...`);
+                    console.error(`Failed path ${modelPath}:`, err);
                 }
             }
-
-            if (!success) {
-                statusDot.className = "w-2 h-2 rounded-full bg-red-500";
-                statusText.innerText = 'Ladefehler';
-                chatInput.placeholder = "Modellpfade blockiert.";
-                
-                const errDiv = document.createElement('div');
-                errDiv.className = "bg-slate-950 text-red-400 p-3 rounded text-xs border border-red-900/40 my-2";
-                errDiv.innerHTML = `<b>❌ Beide lokalen Inferenz-Pfade blockiert</b><br>
-                Deine IT-Firewall blockiert das Auslesen der JSON-Ressourcen auch über das GitHub-Rohdaten-Netzwerk.<br><br>
-                <b>Letzter sicherer Ausweg:</b> Da die Inferenz-Engine den Online-Pfad nicht parsen darf, nutze bitte Methode 1 (Kopieren des Codes in ein echtes <code>about:blank</code>-Tab über F12). Das hebelt jegliche Netzwerk-Sperren aus.`;
-                log.appendChild(errDiv);
-                log.scrollTop = log.scrollHeight;
-            }
+        
+            // All paths failed
+            statusDot.className = "w-2 h-2 rounded-full bg-red-500";
+            statusText.textContent = 'Fehlgeschlagen';
+            showManualOverrideUI();
         }
 
         function loadLinksFromStorage() {

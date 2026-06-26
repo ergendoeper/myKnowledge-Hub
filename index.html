@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Local WebGPU Knowledge Hub</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- PDF.js zuerst laden -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
     <style>
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -12,53 +13,59 @@
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
-    <header class="bg-slate-900 text-white px-6 py-4 shadow-md flex items-center justify-between">
+    <header class="bg-slate-900 text-white px-6 py-4 shadow-md flex items-center justify-between shrink-0">
         <div class="flex items-center space-x-3">
             <div class="bg-teal-500 p-2 rounded-lg text-slate-950 font-bold text-xl">Ω</div>
             <div>
-                <h1 class="text-xl font-bold">Local WebGPU Knowledge Hub</h1>
-                <p class="text-xs text-slate-400">v2.1 • Pure Browser Mode</p>
+                <h1 class="text-xl font-bold tracking-tight">Local WebGPU Knowledge Hub</h1>
+                <p class="text-xs text-slate-400">v2.2 • Pure Browser • HF Direct</p>
             </div>
         </div>
         <div class="flex items-center space-x-3">
-            <select id="model-selector" class="bg-slate-800 text-white rounded px-3 py-1 text-sm">
-                <option value="Qwen1.5-0.5B-Chat">Qwen 0.5B (HF ONNX)</option>
-                <option value="SmolLM2-135M-Instruct">SmolLM2 (HF ONNX)</option>
+            <select id="model-selector" class="bg-slate-800 text-slate-200 border border-slate-700 rounded px-3 py-1 text-sm">
+                <option value="onnx-community/Qwen2.5-0.5B-Instruct">Qwen2.5-0.5B (empfohlen)</option>
+                <option value="Xenova/Qwen1.5-0.5B-Chat">Qwen1.5-0.5B</option>
+                <option value="onnx-community/SmolLM2-135M-Instruct">SmolLM2-135M</option>
             </select>
-            <div id="model-status" class="flex items-center gap-2 bg-slate-800 px-4 py-2 rounded border border-slate-700">
+            <div id="model-status" class="flex items-center space-x-2 bg-slate-800 px-4 py-2 rounded border border-slate-700">
                 <span id="status-dot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                <span id="status-text" class="text-xs">Initialisiere...</span>
+                <span id="status-text" class="text-xs text-slate-300">Bereit zum Laden...</span>
             </div>
         </div>
     </header>
 
     <div class="flex-1 flex overflow-hidden">
-        <!-- Linke Spalte (Dokumente + PDF) -->
-        <div class="w-5/12 border-r bg-white flex flex-col p-4 space-y-4 overflow-y-auto">
-            <div class="bg-slate-50 p-4 rounded-xl border">
-                <h2 class="uppercase text-xs font-bold mb-3">📄 Dokument erfassen</h2>
-                <input id="link-title" placeholder="Titel" class="w-full mb-2 px-3 py-2 border rounded">
-                <textarea id="link-content" rows="4" placeholder="Text oder PDF-Inhalt..." class="w-full mb-3 px-3 py-2 border rounded font-mono text-sm"></textarea>
-                <div class="flex gap-2">
-                    <button id="btn-add" class="flex-1 bg-teal-600 text-white py-2 rounded">Speichern</button>
-                    <label class="flex-1 bg-slate-200 hover:bg-slate-300 py-2 rounded text-center cursor-pointer">
-                        📤 PDF hochladen
-                        <input type="file" id="pdf-upload" accept=".pdf" class="hidden">
-                    </label>
+        <!-- Linke Seite -->
+        <div class="w-5/12 border-r border-slate-200 bg-white flex flex-col p-4 space-y-4 overflow-y-auto">
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <h2 class="text-sm font-semibold uppercase tracking-wider mb-3">📄 Dokument erfassen</h2>
+                <div class="space-y-3">
+                    <input id="link-title" placeholder="Titel (z.B. SAFE 5)" class="w-full px-3 py-2 border rounded-md text-sm">
+                    <textarea id="link-content" rows="5" placeholder="Text hier einfügen..." class="w-full px-3 py-2 border rounded-md font-mono text-sm"></textarea>
+                    <div class="flex gap-2">
+                        <button id="btn-add" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-md font-medium">Speichern</button>
+                        <label class="flex-1 bg-slate-200 hover:bg-slate-300 py-2.5 rounded-md text-center cursor-pointer font-medium">
+                            📤 PDF hochladen
+                            <input type="file" id="pdf-upload" accept=".pdf" class="hidden">
+                        </label>
+                    </div>
                 </div>
             </div>
-            <input id="search-input" placeholder="Suchen..." class="w-full px-3 py-2 border rounded">
+
+            <input id="search-input" placeholder="Durchsuchen..." class="w-full px-3 py-2 border rounded-lg bg-slate-50">
             <div id="links-container" class="flex-1 overflow-y-auto space-y-2"></div>
         </div>
 
         <!-- Chat -->
-        <div class="w-7/12 flex flex-col bg-slate-900 text-slate-100">
-            <div class="p-3 border-b border-slate-700 bg-slate-950 text-xs">
-                Kontext: <span id="active-context-title" class="text-teal-400">Gesamte Wissensdatenbank</span>
+        <div class="w-7/12 flex flex-col bg-slate-900 text-slate-100 overflow-hidden">
+            <div class="bg-slate-950 p-3 border-b border-slate-800 text-xs">
+                Kontext: <span id="active-context-title" class="text-teal-400 font-bold">Gesamte Wissensdatenbank</span>
             </div>
             <div id="chat-log" class="flex-1 p-4 overflow-y-auto space-y-4 text-sm"></div>
-            <div class="p-4 border-t border-slate-700 bg-slate-950 flex gap-2">
-                <input id="chat-input" placeholder="Frage stellen..." class="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-sm" disabled>
+            
+            <div class="p-4 bg-slate-950 border-t border-slate-800 flex gap-2">
+                <input id="chat-input" placeholder="Stelle eine Frage..." 
+                       class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-sm focus:outline-none" disabled>
                 <button id="send-btn" class="bg-teal-600 px-6 rounded-lg font-medium" disabled>Senden</button>
             </div>
         </div>
@@ -67,19 +74,25 @@
     <script type="module">
         import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0';
 
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+        // PDF.js richtig initialisieren
+        window.pdfjsLib = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
+        if (window.pdfjsLib) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+        }
 
-        env.allowLocalModels = true;
-        env.remoteModels = true;   // Wichtig für HF-Direktzugriff
+        env.allowLocalModels = false;
+        env.remoteModels = true;
 
-        let links = [], activeContextIndex = null, generatorPipeline = null;
+        let links = [];
+        let activeContextIndex = null;
+        let generatorPipeline = null;
 
-        // Event Listener
+        // Events
         document.getElementById('btn-add').addEventListener('click', addLink);
         document.getElementById('pdf-upload').addEventListener('change', handlePDFUpload);
         document.getElementById('search-input').addEventListener('input', renderLinks);
         document.getElementById('send-btn').addEventListener('click', sendChatMessage);
-        document.getElementById('chat-input').addEventListener('keypress', e => e.key === 'Enter' && sendChatMessage());
+        document.getElementById('chat-input').addEventListener('keypress', e => { if (e.key === 'Enter') sendChatMessage(); });
         document.getElementById('model-selector').addEventListener('change', e => initLLM(e.target.value));
 
         loadLinksFromStorage();
@@ -89,53 +102,130 @@
         async function initLLM(modelId) {
             const statusDot = document.getElementById('status-dot');
             const statusText = document.getElementById('status-text');
-            const log = document.getElementById('chat-log');
+            const chatInput = document.getElementById('chat-input');
+            const sendBtn = document.getElementById('send-btn');
 
             statusDot.className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
-            statusText.textContent = "Lade Modell von HF...";
+            statusText.textContent = "Lade Modell (kann 30-90s dauern)...";
 
             try {
-                addLog(`🔄 Lade ${modelId} direkt von Hugging Face...`, 'amber');
-
                 generatorPipeline = await pipeline('text-generation', modelId, {
                     device: 'webgpu',
-                    quantized: true,
+                    dtype: 'q4',
                     progress_callback: (data) => {
-                        if (data.status === 'progress') statusText.textContent = `${Math.round(data.progress)}%`;
+                        if (data.status === 'progress') statusText.textContent = `Lade... ${Math.round(data.progress)}%`;
                     }
                 });
 
                 statusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
                 statusText.textContent = "✅ Bereit";
-                document.getElementById('chat-input').disabled = false;
-                document.getElementById('send-btn').disabled = false;
-                addLog(`✅ ${modelId} erfolgreich geladen (HF ONNX)`, 'emerald');
+                chatInput.disabled = false;
+                sendBtn.disabled = false;
+                addLog(`✅ ${modelId} geladen`, 'emerald');
             } catch (err) {
                 console.error(err);
-                addLog(`❌ HF-Ladefehler: ${err.message}`, 'red');
-                addLog("Versuche GitHub-Fallback oder manuelle URL...", 'amber');
-                // Hier könnte man später noch GitHub/jsDelivr versuchen
+                statusDot.className = "w-2 h-2 rounded-full bg-red-500";
+                statusText.textContent = "Fehler";
+                addLog(`❌ Modell konnte nicht geladen werden: ${err.message}`, 'red');
             }
         }
 
-        function addLog(msg, color = 'slate') {
+        function addLog(text, color = 'slate') {
             const log = document.getElementById('chat-log');
             const div = document.createElement('div');
-            div.className = `p-3 rounded-xl text-sm ${color === 'emerald' ? 'bg-emerald-950 border border-emerald-700 text-emerald-300' : color === 'red' ? 'bg-red-950 border border-red-700 text-red-300' : 'bg-slate-800'}`;
-            div.innerHTML = msg;
+            div.className = `p-3 rounded-xl text-sm ${color === 'emerald' ? 'bg-emerald-950 border border-emerald-700 text-emerald-300' : color === 'red' ? 'bg-red-950 border border-red-700 text-red-300' : 'bg-slate-800 text-slate-400'}`;
+            div.innerHTML = text;
             log.appendChild(div);
             log.scrollTop = log.scrollHeight;
         }
 
-        // PDF + Rest der Funktionen (addLink, renderLinks, sendChatMessage, loadLinksFromStorage, handlePDFUpload) bleiben gleich wie in der letzten vollständigen Version.
+        // PDF Upload
+        async function handlePDFUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await window.pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                let fullText = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const content = await page.getTextContent();
+                    fullText += content.items.map(item => item.str).join(' ') + '\n\n';
+                }
+                links.unshift({ title: file.name, url: 'PDF', content: fullText.trim() });
+                localStorage.setItem('local_knowledge_hub_links', JSON.stringify(links));
+                renderLinks();
+                addLog(`✅ PDF "${file.name}" geladen`, 'emerald');
+            } catch (err) {
+                addLog(`❌ PDF-Fehler: ${err.message}`, 'red');
+            }
+        }
 
-        // (Ich kann sie bei Bedarf nochmal kopieren, aber sie sind identisch zur vorherigen Nachricht)
+        function loadLinksFromStorage() {
+            const stored = localStorage.getItem('local_knowledge_hub_links');
+            if (stored) links = JSON.parse(stored);
+        }
 
-        async function handlePDFUpload(e) { /* ... wie vorher */ }
-        function loadLinksFromStorage() { /* ... */ }
-        function addLink() { /* ... */ }
-        function renderLinks() { /* ... */ }
-        async function sendChatMessage() { /* ... */ }
+        function addLink() {
+            const title = document.getElementById('link-title').value.trim();
+            const content = document.getElementById('link-content').value.trim();
+            if (!title || !content) return;
+            links.unshift({ title, url: 'manuell', content });
+            localStorage.setItem('local_knowledge_hub_links', JSON.stringify(links));
+            renderLinks();
+            document.getElementById('link-title').value = '';
+            document.getElementById('link-content').value = '';
+        }
+
+        function renderLinks() {
+            const container = document.getElementById('links-container');
+            const search = document.getElementById('search-input').value.toLowerCase();
+            container.innerHTML = '';
+            const filtered = links.filter(l => l.title.toLowerCase().includes(search) || l.content.toLowerCase().includes(search));
+            filtered.forEach((link, idx) => {
+                const globalIdx = links.indexOf(link);
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-lg border cursor-pointer ${globalIdx === activeContextIndex ? 'bg-teal-50 border-teal-500' : 'bg-white hover:bg-slate-50 border-slate-200'}`;
+                card.innerHTML = `<h4 class="font-medium">${link.title}</h4><p class="text-xs text-slate-500">${link.url}</p>`;
+                card.onclick = () => {
+                    activeContextIndex = globalIdx;
+                    document.getElementById('active-context-title').textContent = link.title;
+                    renderLinks();
+                };
+                container.appendChild(card);
+            });
+        }
+
+        async function sendChatMessage() {
+            const inp = document.getElementById('chat-input');
+            const val = inp.value.trim();
+            if (!val || !generatorPipeline) return;
+            inp.value = '';
+
+            const log = document.getElementById('chat-log');
+            log.innerHTML += `<div class="bg-slate-700 p-3 rounded-xl max-w-[85%] ml-auto text-white">${val}</div>`;
+
+            const aiDiv = document.createElement('div');
+            aiDiv.className = "bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-300 italic";
+            aiDiv.textContent = "Denke nach...";
+            log.appendChild(aiDiv);
+            log.scrollTop = log.scrollHeight;
+
+            const ctx = activeContextIndex !== null ? links[activeContextIndex].content : links.map(l => l.content).join("\n\n");
+
+            try {
+                const output = await generatorPipeline([{ role: 'user', content: `Kontext: ${ctx}\n\nFrage: ${val}` }], {
+                    max_new_tokens: 120,
+                    temperature: 0.1
+                });
+                const answer = output[0].generated_text.at(-1).content.trim();
+                aiDiv.className = "bg-slate-800 p-3 rounded-xl border border-slate-700 text-slate-100";
+                aiDiv.textContent = answer;
+            } catch (err) {
+                aiDiv.textContent = "Fehler bei der Antwortgenerierung.";
+            }
+            log.scrollTop = log.scrollHeight;
+        }
     </script>
 </body>
 </html>
